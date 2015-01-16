@@ -4,13 +4,10 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 %   full documentation of msatsi.m routine, see http://induced.pl/msatsi 
 %   or documentation files provided in MSATSI package.
 %
+
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%
-%   $Revision: 2.0 $  $Date: 2013.19.09 $ 
-%     * Modification of fraction of correctly picked fault planes
-%
-
+%   $Revision: 1.0.7 $  $Date: 2014.06.02 $ 
 
 % Interpretation of input parameters.
 p = inputParser;

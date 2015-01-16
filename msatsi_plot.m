@@ -1,20 +1,20 @@
 function [Hs, Hr] = msatsi_plot(projectname, type, varargin)
 %MSATSI_PLOT  Plot output of MSATSI program.
-%   Auxillary routine allowing to display stress inversion results using a 
-%   variety of 0D-3D plots. For the full documentation of msatsi_plot.m routine, 
+%   Auxillary routine allowing to display stress inversion results using a
+%   variety of 0D-3D plots. For the full documentation of msatsi_plot.m routine,
 %   see http://induced.pl/msatsi website or look into the documentation files
 %   provided with MSATSI package.
 %
-%   msatsi_plot(projectname, type) displays results of 'projectname' stress 
-%     inversion using plot type 'type'. 'projectname' is either the name of a 
-%     directory where project files are stored (this directory is created by 
-%     calling msatsi.m program) or alternatively a structure array obtained 
-%     as an output of msatsi.m routing. The 'type' variable is a string 
-%     denoting the type of plot. Valid types of plot are 'stereonet', 
+%   msatsi_plot(projectname, type) displays results of 'projectname' stress
+%     inversion using plot type 'type'. 'projectname' is either the name of a
+%     directory where project files are stored (this directory is created by
+%     calling msatsi.m program) or alternatively a structure array obtained
+%     as an output of msatsi.m routing. The 'type' variable is a string
+%     denoting the type of plot. Valid types of plot are 'stereonet',
 %     'stereomap', 'profile', 'stereovolume', and 'wsm'.
 %
-%     'stereonet' allows displaying 0D-1D data using stereographic (Schmidt or 
-%       Wullf) projection. In case of 1D data, the trace of stress rotation is 
+%     'stereonet' allows displaying 0D-1D data using stereographic (Schmidt or
+%       Wullf) projection. In case of 1D data, the trace of stress rotation is
 %       plotted.
 %
 %     'stereomap' is a plot for 2D data only allowing to show the spatial
@@ -35,10 +35,10 @@ function [Hs, Hr] = msatsi_plot(projectname, type, varargin)
 
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%
-%   $Revision: 1.0.0.3 $  $Date: 2013/07/10 00:00:00 $
+%   $Revision: 1.0.8 $  $Date: 2014.09.01 $
 
-%   Part of MSATSI package.
+%   Development info:
+%     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
 
 global scale_factor;
 global stereo_projection;
@@ -50,6 +50,11 @@ global AxesColor;
 global AxesEnabled;
 global AXESI;
 global confidence_intervals;
+global silent_mode;
+global save_image;
+global project_name;
+
+project_name = projectname;
 
 % If Out is character array, read satsi.mat from the specified
 % directory and put it into the Out structure array.
@@ -91,6 +96,8 @@ p.addParamValue('Symbol', '+', @(x)any(strcmpi(x,{'+','o','*','.','x','s','d','^
 p.addParamValue('SText', 'off', @(x)any(strcmpi(x,{'on','off'})));
 p.addParamValue('Title', 'off');
 p.addParamValue('RPlot', 'on', @(x)any(strcmpi(x,{'off','on'})));
+p.addParamValue('SilentMode', 'off', @(x)any(strcmpi(x,{'off','on'})));
+p.addParamValue('SaveImage', 'off', @(x)any(strcmpi(x,{'off','on'})));
 p.addRequired('type', @(x)any(strcmpi(x, {'stereonet','stereomap', 'profile', 'stereovolume','wsm'})));
 
 % Parse input parameters.
@@ -121,6 +128,8 @@ zgridlabel = p.Results.ZGridLabel;
 x_label = p.Results.XLabel;
 y_label = p.Results.YLabel;
 z_label = p.Results.ZLabel;
+silent_mode = p.Results.SilentMode; if strcmpi(silent_mode,'off'), silent_mode = false; else silent_mode = true; end
+save_image = p.Results.SaveImage; if strcmpi(save_image,'off'), save_image = false; else save_image = true; end
 GRID_ARB = p.Results.ArbitraryGrid;
 
 %---- Determine colors and whether or not to plot stress axes.
@@ -227,7 +236,6 @@ if strcmpi(confidence_intervals,'intervals') || strcmpi(confidence_intervals,'of
 end
 
 if strcmpi(confidence_intervals,'bootstraps') || strcmpi(type, 'wsm')
-  
   TR_BOOT  = cell(size(GRID,1),1);
   PL_BOOT  = cell(size(GRID,1),1);
   PHI_BOOT = cell(size(GRID,1),1);
@@ -313,28 +321,27 @@ end
 
 
 
-%==== Plot generation routines ===========================================
+%==== Plot generation routines ====================================================================
 
 % Generate output handle structure.
 Hs = []; % Handles of stress-related plots.
 Hr = []; % Handles of r-related plots.
 
-%==== A) Stress orientation with 'STEREONET' 0D, 1D case =================
+%==== A) Stress orientation with 'STEREONET' 0D, 1D case ==========================================
 if strcmpi(type, 'stereonet')
   
-  %---- A.1 Plot by data points from bootstrap resampling
+  %---- A.1: Plot by data points from bootstrap resampling
   if strcmpi(confidence_intervals,'bootstraps')
     [XX_BEST,YY_BEST] = project(AZM_BEST, TKO_BEST);
     [dummy1,dummy2,Hs] = make_bootstrap_dots(type,GRID,SBOOT,XX_BEST,YY_BEST,X0,Y0, ...
       zeros(length(X0),1),view_stereonet, view_grid,stext, ...
-      title_text,symbol,Hs);
+      title_text,symbol,Hs); %#ok<ASGLU>
     
     % Generate R plot.
     if strcmpi(R_plot,'on')
       for i=1:size(GRID,1)
         R = 1 - SBOOT{i}(:,1);
         X = 0:0.1:1;
-        
         Hr = newrfigure(Hr);
         [n,xout] = hist(R,X);
         h = bar(xout,n);
@@ -343,20 +350,21 @@ if strcmpi(type, 'stereonet')
         text(0.75,max(n)-0.5,['R best = ' num2str(best_value)],'Fontsize',12)
         xlim([0 1]);
         grid on; box on;
-        xlabel('R values');
+        xlabel('R value');
         ylabel('Number of cases');
+        % **Save figure
+        saveimage('-stereonet-R',GRID,i);
       end
     end
     
-    %---- A.2 Representation using data points from interval patches
-  elseif strcmpi(confidence_intervals,'intervals') || strcmpi(confidence_intervals,'off')
+  %---- A.2 Representation using data points from interval patches
+  elseif strcmpi(confidence_intervals, 'intervals') || strcmpi(confidence_intervals, 'off')
     
     if ndim_eff == 0 || ndim_eff == 1
       
       [XX_BEST, YY_BEST] = project(AZM_BEST, TKO_BEST);
       
-      % Generate stereonet with trace of stress directions and
-      % semi-transparent confidence intervals.
+      %---- Plot stereonet with trace of stress directions
       Hs = newsfigure(Hs);
       plot_stereonet(0, 0, view_stereonet, view_grid)
       hold on;
@@ -368,23 +376,25 @@ if strcmpi(type, 'stereonet')
       end
       hold off;
       axis equal; box on; axis off;
-      
       if strcmpi(stext,'on')
         text(XX_BEST(1,1) - 0.05,YY_BEST(1,1) + 0.05,'\sigma_1','FontSize',20,'Color',AxesColor{1});
         text(XX_BEST(1,2) - 0.05,YY_BEST(1,2) + 0.05,'\sigma_2','FontSize',20,'Color',AxesColor{2});
         text(XX_BEST(1,3) - 0.05,YY_BEST(1,3) + 0.05,'\sigma_3','FontSize',20,'Color',AxesColor{3});
       end
-      
+      plot_title(title_text,Out.Caption);
+      %---- END: Plot stereonet with trace of stress directions
+      % **Save figure
+      saveimage('-stereonet');
     else
-      error(['You selected ''stereotrace'' plot type, but the effective ' ...
+      error(['You selected ''stereonet'' plot type, but the effective ' ...
         'dimension of data grid is not 0D or 1D (ndim_eff = ' num2str(ndim_eff) '). '  ' ']);
     end
-    plot_title(title_text,Out.Caption);
+    %plot_title(title_text,Out.Caption); % Moved up to if block above.
     
-    % R plot.
+    %---- R plot.
     if strcmpi(R_plot,'on')
       Hr = newrfigure(Hr);
-      hold on
+      hold on;
       for k = 1:size(GRID,1)
         if strcmpi(confidence_intervals,'off') == 0
           xline = R_MIN(k):0.01:R_MAX(k);
@@ -395,15 +405,20 @@ if strcmpi(type, 'stereonet')
       end
       d1 = plot(1:k,R_BEST,'sr');
       set(d1,'MarkerSize',5,'MarkerFaceColor','r');
-      grid on;
+      grid on; box on;
       xlabel('X Y');
       ylabel('R values');
       set(gca,'XTick',1:k);
       set(gca,'XTickLabel',{num2str(GRID)});
+      %---- R plot.
+      % **Save figure
+      saveimage('-stereonet-R',GRID,i);
     end
   end
   
-  %==== B) Plot data as "PROFILE" ==========================================
+  
+  
+%==== B) Plot data as "PROFILE" ===================================================================
 elseif strcmpi(type, 'profile')
   
   if ndim_eff == 1 % data must be 1D
@@ -421,7 +436,7 @@ elseif strcmpi(type, 'profile')
     [TR_BEST,TR_BOOT,TR_MIN,TR_MAX, JE, JD, TR_MAX_E, TR_MIN_E] = ...
       profile_correct2(TR_BEST,TR_BOOT,TR_MIN,TR_MAX);
     
-    % Generate profile plot of Sx trends.
+    %---- B.1 Plot: Generate profile plot of Sx trends.
     Hs = newsfigure(Hs);
     k=0;
     for i=AXESI
@@ -459,8 +474,11 @@ elseif strcmpi(type, 'profile')
         xlabel(['Grid # (' GridLabel{COLGRID_EFF} ' coordinate)']); % TODO: must be modified in arbitrary dimension
       end
     end
+    %---- END: Generate profile plot of Sx trends.
+    % **Save figure
+    saveimage('-profile-trends');
     
-    % Generate profile plot of Sx plunges.
+    %---- B.2 Plot: Generate profile plot of Sx plunges.
     Hs = newsfigure(Hs);
     k=0;
     for i=AXESI
@@ -489,8 +507,11 @@ elseif strcmpi(type, 'profile')
         xlabel(['Grid # (' GridLabel{COLGRID_EFF} ' coordinate)']); % TODO: modify in arbitrary dimension
       end
     end
+    %---- END: Generate profile plot of Sx plunges.
+    % **Save figure
+    saveimage('-profile-plunges');
     
-    % Produce R plot.
+    %---- B.3: Generate R plot.
     if strcmpi(R_plot,'on')
       Hr = newrfigure(Hr);
       hold on;
@@ -505,8 +526,11 @@ elseif strcmpi(type, 'profile')
       plot_title(title_text,Out.Caption);
       hold off; grid on; box on;
       xlabel(['Grid # (' GridLabel{COLGRID_EFF} ' coordinate)']);
-      ylabel('R Values');
+      ylabel('R values');
     end
+    %---- END: Generate R plot.
+    % **Save figure
+    saveimage('-profile-R');
   else
     error(['You selected ''profile'' plot type, but the effective ' ...
       'dimension of data grid is not 1D (ndim_eff = ' num2str(ndim_eff) '). ' '']);
@@ -514,12 +538,11 @@ elseif strcmpi(type, 'profile')
   
   
   
-  %=== C) Plot data as World Stress Map project ============================
-  
+%=== C) Plot data as World Stress Map project =====================================================
 elseif strcmpi(type, 'wsm')
   if ndim_total == 2 && ndim_eff == 2   % Plot valid ONLY for 2D
     
-    %% Lund&Townend extension
+    % Lund&Townend extension
     [XBEST,YBEST,ZBEST] = sph2cart(TR_BEST*pi/180,PL_BEST*pi/180,ones(length(GRID),3));
     TR_BEST_SHmax = zeros(length(GRID),1);
     AZM_BEST_SHmax = zeros(length(GRID),1);
@@ -528,7 +551,7 @@ elseif strcmpi(type, 'wsm')
       AZM_BEST_SHmax(i) = alpha;
       TR_BEST_SHmax(i) = alpha*180/pi; % in degrees
     end
-    %% end extension
+    % end extension
     
     % Determine SHMax axes for each grid (Zoback's Criteria, 1992)
     AxesSHMax = zeros(length(X0),1);  color = zeros(length(X0),3);
@@ -544,7 +567,7 @@ elseif strcmpi(type, 'wsm')
       end
     end
     
-    % Design figure.
+    %---- C.1: Generate WSM figure.
     if strcmpi(confidence_intervals,'intervals') || strcmpi(confidence_intervals,'off')
       Hs = newsfigure(Hs);
       hold on;
@@ -555,13 +578,9 @@ elseif strcmpi(type, 'wsm')
     end
     
     if strcmpi(confidence_intervals,'off')
-      
       X = XX_BEST_SHmax';  Y = YY_BEST_SHmax';
-      
-      
       if  strcmp(intermediate,'on'); I = AxesSHMax ~= 5;
       elseif strcmp(intermediate,'off'); I = AxesSHMax ~= 0; end
-      
       if sum(I) ~= 0
         Xline = [X(I);zeros(size(X(I)))] + [X0(I) X0(I)]';
         Yline = [Y(I);zeros(size(Y(I)))] + [Y0(I) Y0(I)]';
@@ -581,13 +600,13 @@ elseif strcmpi(type, 'wsm')
       
       for j = 1:size(AxesSHMax,1)
         if   (AxesSHMax(j) ~=0) || (AxesSHMax(j) == 0 && strcmp(intermediate,'on'))
-          %%   extension lund and Townend
+          %   extension lund and Townend
           alpha_min = SH([XMIN(j,1),YMIN(j,1),ZMIN(j,1)],[XMIN(j,2),YMIN(j,2),ZMIN(j,2)],[XMIN(j,3),YMIN(j,3),ZMIN(j,3)],R_MIN(j));
           alpha_max = SH([XMAX(j,1),YMAX(j,1),ZMAX(j,1)],[XMAX(j,2),YMAX(j,2),ZMAX(j,2)],[XMAX(j,3),YMAX(j,3),ZMAX(j,3)],R_MAX(j));
           tr_min_shmax = alpha_min * 180/pi;
           tr_max_shmax = alpha_max * 180/pi;
-          %%   end extension
-          ARANGE = tr_min_shmax:tr_max_shmax;
+          %   end extension
+          ARANGE = tr_min_shmax:tr_max_shmax; %#ok<NASGU>
           
           % Display bootstrap grid points.
           TKO = pi/2 - SBOOT{j}(:,3+(AxesSHMax(j)-1)*2) * pi / 180;
@@ -648,6 +667,9 @@ elseif strcmpi(type, 'wsm')
     plot_title(title_text,Out.Caption);
     plot_grids(xgridlabel,ygridlabel,zgridlabel);
     plot_labels(x_label,y_label,z_label);
+    %---- END: C.1: Generate WSM figure.
+    % **Save figure
+    saveimage('-wsm');
     
   else
     error(['You selected ''wsm'' plot type, but the effective ' ...
@@ -656,11 +678,11 @@ elseif strcmpi(type, 'wsm')
   
   
   
-  %==== D) Map with S1,2,3 on "STEREOMAP" 2D ===============================
-  
+%==== D) Map with S1,2,3 on "STEREOMAP" 2D ========================================================
 elseif strcmpi(type, 'stereomap')  %(2D)
+  
   if ndim_total == 2
-    % Design figure.
+    %---- D.1: Stereomap plot.
     if strcmpi(confidence_intervals,'intervals') || strcmpi(confidence_intervals,'off')
       Hs = newsfigure(Hs);
       plot_stereonet(X0, Y0, view_stereonet, view_grid)
@@ -690,76 +712,79 @@ elseif strcmpi(type, 'stereomap')  %(2D)
       
     elseif strcmpi(confidence_intervals,'bootstraps')
       Z0 = zeros(length(X0),1);  % dummy variables to fill
-      [dummy1,dummy2,Hs] = make_bootstrap_dots(type,GRID,SBOOT,XX_BEST,YY_BEST,X0,Y0,Z0,view_stereonet,view_grid,stext,title_text,symbol,Hs);
+      [dummy1,dummy2,Hs] = make_bootstrap_dots(type,GRID,SBOOT,XX_BEST,YY_BEST,X0,Y0,Z0,view_stereonet,view_grid,stext,title_text,symbol,Hs); %#ok<ASGLU>
     end
     plot_title(title_text,Out.Caption);
     plot_grids(xgridlabel,ygridlabel,zgridlabel);
     plot_labels(x_label,y_label,z_label);
-    
     hold off; axis equal;  box on;
     if isempty(GRID_ARB)
       set(gca,'XTick',0:max(X0),'YTick',0:max(Y0),'Color','none');
     else
       set(gca,'Color','none');
     end
-    if strcmpi(confidence_intervals,'intervals')
-      if strcmpi(R_plot,'on')  % R plot(s)
-        % R plot color encoded + number
-        Hr = newrfigure(Hr);
-        hold on;
-        d1 = scatter(X0,Y0,90,R_BEST,'filled');
-        set(d1,'Marker','s');
-        axis([(min(X0)-0.5) (max(X0)+0.5) (min(Y0)-0.5) (max(Y0)+0.5)])
-        colormap jet;
-        xlabel('X grid number');  ylabel('Y grid number');
-        h = colorbar;   ylabel(h,'R values');
-        if isempty(GRID_ARB)
-          set(gca,'XTick',min(X0):max(X0),'YTick',min(Y0):max(Y0));
-        end
-        hold off;
-        grid on;  box on;
-        plot_grids(xgridlabel,ygridlabel,zgridlabel);
-        
-        for i = 1: length(X0)
-          text(X0(i),Y0(i) - 0.02,['[' num2str(R_MIN(i)) ' , ' num2str(R_MAX(i)) ']'],'HorizontalAlignment','center','VerticalAlignment','top');
-        end
-        
+    %---- END: D.1: Stereomap plot.
+    % **Save figure
+    saveimage('-stereomap');
+    
+    if strcmpi(confidence_intervals,'intervals') && strcmpi(R_plot,'on')
+      %---- D.2: R values plot
+      Hr = newrfigure(Hr);
+      hold on;
+      d1 = scatter(X0,Y0,90,R_BEST,'filled');
+      set(d1,'Marker','s');
+      axis([(min(X0)-0.5) (max(X0)+0.5) (min(Y0)-0.5) (max(Y0)+0.5)])
+      colormap jet;
+      xlabel('X grid number');  ylabel('Y grid number');
+      h = colorbar;   ylabel(h,'R values');
+      if isempty(GRID_ARB)
+        set(gca,'XTick',min(X0):max(X0),'YTick',min(Y0):max(Y0));
       end
-    elseif strcmpi(confidence_intervals,'bootstraps')
-      if strcmpi(R_plot,'on')   % R plot (histograms)
-        figure
-        for j = 1:size(GRID,1)
-          R = R_BOOT{j};
-          left = X0(j)/(max(X0) + 1) + 0.01;
-          bottom = Y0(j)/(max(Y0) + 1) + 0.05;
-          width = 1/length(unique(X0)) - 0.1;
-          height = 1/length(unique(Y0)) - 0.1;
-          subplot('Position',[left bottom width height]);
-          x = 0:0.1:1;
-          [n,xout]= hist(R,x);
-          h = bar(xout,n);
-          set(h,'FaceColor','w','EdgeColor','k')
-          best_value = (round(R_BEST(j)*100))/100;
-          title(['R best = ' num2str(best_value)])
-          %text(0.75,max(n)-0.5,['R best = ' num2str(best_value)],'Fontsize',12)
-          grid on;
-          xlim([min(R) max(R)]);
-          xlabel('R'); ylabel('N° cases');
-        end
+      hold off;
+      grid on;  box on;
+      plot_grids(xgridlabel,ygridlabel,zgridlabel);
+      for i = 1: length(X0)
+        text(X0(i),Y0(i) - 0.02,['[' num2str(R_MIN(i)) ' , ' num2str(R_MAX(i)) ']'],'HorizontalAlignment','center','VerticalAlignment','top');
       end
+      %---- END: D.2: R values plot
+      % **Save figure
+      saveimage('-stereomap-R');
+    elseif strcmpi(confidence_intervals,'bootstraps') && strcmpi(R_plot,'on')
+      %---- D.2: R values plot
+      Hr = newrfigure(Hr);
+      for j = 1:size(GRID,1)
+        R = R_BOOT{j};
+        left = X0(j)/(max(X0) + 1) + 0.01;
+        bottom = Y0(j)/(max(Y0) + 1) + 0.05;
+        width = 1/length(unique(X0)) - 0.1;
+        height = 1/length(unique(Y0)) - 0.1;
+        subplot('Position',[left bottom width height]);
+        x = 0:0.1:1;
+        [n,xout]= hist(R,x);
+        h = bar(xout,n);
+        set(h,'FaceColor','w','EdgeColor','k')
+        best_value = (round(R_BEST(j)*100))/100;
+        title(['R best = ' num2str(best_value)])
+        grid on; box on;
+        xlim([min(R) max(R)]);
+        xlabel('R'); ylabel('No. cases');
+      end
+      %---- END: D.2: R values plot
+      % **Save figure
+      saveimage('-stereomap-R');
     end
   else
     error(['You selected ''stereomap'' plot type, but the total ' ...
       'dimension of data grid is not 2D (ndim_total = ' num2str(ndim_total) ')']);
   end
   
-  %====E: Plot data as "STEREOVOLUME" =====================================
+  
+%==== E: Plot data as "STEREOVOLUME" ==============================================================
 elseif strcmpi(type, 'stereovolume')
   
-  
   if (ndim_total == 4 && ndim_eff == 3) || (ndim_total == 2 && ndim_eff == 2)  % data must be 3D
-    % Prepare grid points.
     
+    % Prepare grid points.
     X0 = Out.GRID(:,COLGRID_EFF(1));  Y0 = Out.GRID(:,COLGRID_EFF(2));
     if ndim_eff == 2
       Z0 = ones(size(X0));
@@ -767,6 +792,7 @@ elseif strcmpi(type, 'stereovolume')
       Z0 = Out.GRID(:,COLGRID_EFF(3));
     end
     
+    %---- E.1: Stereovolume plot of stress axis directions
     if strcmpi(confidence_intervals,'intervals')
       Hs = newsfigure(Hs);
       hold on;
@@ -781,7 +807,7 @@ elseif strcmpi(type, 'stereovolume')
       
     elseif strcmpi(confidence_intervals,'bootstraps')
       [XX_BEST,YY_BEST] = project(AZM_BEST, TKO_BEST);
-      [dummy1,dummy2,Hs] = make_bootstrap_dots(type,GRID,SBOOT,XX_BEST,YY_BEST,X0,Y0,Z0,view_stereonet,view_grid,stext,title_text,symbol,Hs);
+      [dummy1,dummy2,Hs] = make_bootstrap_dots(type,GRID,SBOOT,XX_BEST,YY_BEST,X0,Y0,Z0,view_stereonet,view_grid,stext,title_text,symbol,Hs); %#ok<ASGLU>
     end
     
     txt = {'\sigma_1','\sigma_2','\sigma_3'};
@@ -792,7 +818,7 @@ elseif strcmpi(type, 'stereovolume')
         text(XV(:,m) + X0, YV(:,m) + Y0, ZV(:,m) + Z0,txt{m},'FontSize',20,'Color',AxesColor{m});
       end
     end
-    hold off; axis equal;  box on; grid on
+    hold off; axis equal;  box on; grid on;
     plot_title(title_text,Out.Caption);
     plot_grids(xgridlabel,ygridlabel,zgridlabel);
     plot_labels(x_label,y_label,z_label);
@@ -802,11 +828,14 @@ elseif strcmpi(type, 'stereovolume')
     % GK: ^ Pati, for some reason this above does not work very good in some
     % cases...
     axis equal;
+    %---- END: E.1: Stereovolume plot of stress axis directions
+    % **Save figure
+    saveimage('-stereovolume');
     
-    % if strcmpi(confidence_intervals,'intervals')
     if strcmpi(R_plot,'on')  % R plot(s)
+      %---- E.2: R Plot for stereovolume
       Hr = newrfigure(Hr);
-      hold on
+      hold on;
       d1 = scatter3(X0,Y0,Z0,90,R_BEST,'filled');
       set(d1,'Marker','s');
       axis([(min(X0)-0.5) (max(X0)+0.5) (min(Y0)-0.5) (max(Y0)+0.5) (min(Z0)-0.5) (max(Z0)+0.5)])
@@ -817,8 +846,8 @@ elseif strcmpi(type, 'stereovolume')
       h = colorbar;
       ylabel(h,'R values');
       set(gca,'XTick',min(X0):max(X0),'YTick',min(Y0):max(Y0),'ZTick',min(Z0):max(Z0));
-      grid on
-      hold off
+      hold off;
+      grid on; box on;
       plot_grids(xgridlabel,ygridlabel,zgridlabel);
       plot_labels(x_label,y_label,z_label);
       if strcmpi('ConfidenceIntervals','intervals')
@@ -826,8 +855,12 @@ elseif strcmpi(type, 'stereovolume')
           text(X0(i),Y0(i) - 0.02,Z0(i),['[' num2str(R_MIN(i)) ' , ' num2str(R_MAX(i)) ']'],'HorizontalAlignment','center','VerticalAlignment','top');
         end
       end
+      view([-40 30]);
+      %---- END: E.2: R Plot for stereovolume
+      % **Save figure
+      saveimage('-stereovolume-R');
     end
-    %end
+    
   else
     error(['You selected ''stereovolume'' plot type, but the total ' ...
       'dimension of data grid is not 3D (ndim_total = ' num2str(ndim_total) ')']);
@@ -838,12 +871,73 @@ end % across all type of plots.
 %=========================================================================
 %=========================================================================
 %=========================================================================
-function h=newrfigure(h)
-h = [h figure];
-function h=newsfigure(h)
-h = [h figure];
+function h = newrfigure(h)
 
+global silent_mode;
+
+if ~silent_mode
+  h = [h figure];
+else
+  h = [h figure('Visible','off')];
+end
+
+%-------------------------------------------------------------------------
+function h = newsfigure(h)
+
+global silent_mode;
+
+if ~silent_mode
+  h = [h figure];
+else
+  h = [h figure('Visible','off')];
+end
+
+%-------------------------------------------------------------------------
+function saveimage(filename,varargin)
+
+global save_image;
+global project_name;
+
+if save_image
+  
+  % Force smoothing of various objects (may not work correctly!)
+%   h = findobj(gca,'Type','line'); set(h,'LineSmoothing','on');
+%   h = findobj(gca,'Type','patch'); set(h,'LineSmoothing','on');
+%   h = findobj(gca,'Type','surf'); set(h,'LineSmoothing','on');
+%   h = findobj(gca,'Type','mesh'); set(h,'LineSmoothing','on');
+  
+  % Printinf driver properties.
+  driver = '-dpng';
+  resolution = '-r150';
+  extension = '.png';
+  
+  if nargin == 3
+    % Provide additional grid information if necessary.
+    GRID = varargin{1};
+    i = varargin{2};
+    if size(GRID,1) == 1
+      % If 0D problem, skip grid information.
+      print(driver,resolution,[project_name filename extension]);
+    else
+      % Provide more or less extensive description of grid points depending on number of dimentions.
+      if size(GRID,2) == 2
+        gridstr = sprintf('-x%02dy%02d',GRID(i,:));
+      elseif size(GRID,2) == 4
+        gridstr = sprintf('-x%02dy%02dz%02dt%02d',GRID(i,:));
+      else
+        error('Unknown number of dimensions');
+      end
+      print(driver,resolution,[project_name filename gridstr extension]);
+    end
+  else
+    % Ordinary saving with no grid information.
+    print(driver,resolution,[project_name filename extension]);
+  end
+end
+
+%-------------------------------------------------------------------------
 function plot_grids(xgridlabel,ygridlabel,zgridlabel)
+
 if ~isempty(xgridlabel)
   set(gca,'XTickLabel',xgridlabel);
 end
@@ -853,8 +947,10 @@ end
 if ~isempty(zgridlabel)
   set(gca,'ZTickLabel',zgridlabel);
 end
+
 %-------------------------------------------------------------------------
 function plot_labels(x_label,y_label,z_label)
+
 if ~isempty(x_label)
   xlabel(x_label)
 end
@@ -863,10 +959,11 @@ if ~isempty(y_label)
 end
 if ~isempty(z_label)
   zlabel(z_label)
-  
 end
+
 %-------------------------------------------------------------------------
 function makepatch(type,TR_MIN,TR_MAX,PL_MIN,PL_MAX,X0,Y0,PATCHCOLORS,AxesEnabled,confidence_intervals)
+
 % Design and plot patches.
 for i = 1:size(TR_MIN,1)
   for j=1:3
@@ -906,6 +1003,7 @@ end
 
 %------------------------------------------------------------------------------
 function plotpatch(X,Y,COLOR)
+
 X = X(:);
 Y = Y(:);
 K = convhull(X,Y);
@@ -927,10 +1025,10 @@ for i=1:size(GRID,1)
   TR2 = BOOT(:,4); PL2 = BOOT(:,5);
   TR3 = BOOT(:,6); PL3 = BOOT(:,7);
   
-  ID = false(size(BOOT,1),3); % defined for bootstrpa plot optimization
+  ID = false(size(BOOT,1),3); % defined for bootstrap plot optimization
   
   for j = 1:3
-    [NULL,M]= unique(BOOT(:,(2*j):(2*j+1)),'rows');
+    [NULL,M]= unique(BOOT(:,(2*j):(2*j+1)),'rows'); %#ok<ASGLU>
     ID(M,j) = true;
   end
   
@@ -965,22 +1063,18 @@ for i=1:size(GRID,1)
   if strcmpi(type,'stereovolume') == 0
     if size(X0,1) == size(GRID,1)
       for m = fliplr(AXESI)
-        %   plot(XX(:,m) + X0(i),YY(:,m) + Y0(i),'.','Color',AxesColor{m},'MarkerSize',15,'LineWidth',2);
         plot(XX(ID(:,m),m) + X0(i),YY(ID(:,m),m) + Y0(i),'.','Color',AxesColor{m},'MarkerSize',15,'LineWidth',2);
         
       end
       if strcmpi(type,'stereomap'); marker_size = 10; else marker_size = 15; end
       for m = fliplr(AXESI)
-        % plot(XX(1,m) + X0(i),YY(1,m) + Y0(i),'k','MarkerSize',marker_size,'LineWidth',2,'Marker',symbol);
         plot(XX_BEST(i,m) + X0(i),YY_BEST(i,m) + Y0(i),'k','MarkerSize',marker_size,'LineWidth',2,'Marker',symbol);
       end
     else
       for m = fliplr(AXESI)
-        %  plot(XX(:,m) + X0,YY(:,m) + Y0,'.','Color',AxesColor{m},'MarkerSize',15,'LineWidth',2);
         plot(XX(ID(:,m),m) + X0,YY(ID(:,m),m) + Y0,'.','Color',AxesColor{m},'MarkerSize',15,'LineWidth',2);
       end
       for m = AXESI
-        % plot(XX(1,m) + X0,YY(1,m) + Y0,'k','MarkerSize',18,'LineWidth',2,'Marker',symbol);
         plot(XX_BEST(i,m) + X0,YY_BEST(i,m) + Y0,'k','MarkerSize',18,'LineWidth',2,'Marker',symbol);
       end
     end
@@ -993,7 +1087,6 @@ for i=1:size(GRID,1)
     end
   else % Stereovolume
     for m = fliplr(AXESI)
-      %  plot3(XV(:,m) + X0(i),YV(:,m) + Y0(i),ZV(:,m) + Z0(i),'Color',AxesColor{m},'LineWidth',2,'Marker','.','LineStyle','none');
       plot3(XV(ID(:,m),m) + X0(i),YV(ID(:,m),m) + Y0(i),ZV(ID(:,m),m) + Z0(i),'Color',AxesColor{m},'LineWidth',2,'Marker','.','LineStyle','none');
     end
     
@@ -1008,6 +1101,11 @@ for i=1:size(GRID,1)
   plot_title(title_text,Out.Caption);
   hold off; axis equal; grid on
   if strcmpi(type,'stereonet');  axis off; end
+  
+  % **Save figure
+  if strcmpi(type,'stereomap');  continue; end
+  saveimage('-stereonet',GRID,i);
+
 end
 
 %------------------------------------------------------------------------------
@@ -1019,7 +1117,7 @@ global stereo_projection;
 I = TKO > pi/2;
 AZM(I) = AZM(I) + pi;
 TKO(I) = pi - TKO(I);
-if strcmpi(stereo_projection,'schmidt')
+if strcmpi(stereo_projection, 'schmidt')
   R = sqrt(2)*sin(TKO/2); % Schmidt (Lambert, equal-area)
 else
   R = tan(TKO/2);  % Wulff projection (Stereographic, equal-angle)
@@ -1035,7 +1133,7 @@ global grid_color;
 global grid_step_azimuth;
 global grid_step_plunge;
 
-if strcmpi(view_stereonet,'off')
+if strcmpi(view_stereonet, 'off')
   return;
 end
 
@@ -1072,6 +1170,7 @@ for i=1:length(X0)
   end
   
   patch(Fvc,'FaceColor','none','EdgeColor','k','LineWidth',2);
+  set(gcf,'Color','w');
 end
 % ------------------------------------------------------------------------
 function plot_title(title_text,ctext)
@@ -1358,8 +1457,7 @@ end
 if alpha < 0
   alpha = alpha + pi;
 end
-if alpha > pi or abs(alpha - pi) < EPS
+%if alpha > pi or abs(alpha - pi) < EPS
+if alpha > pi || abs(alpha - pi) < EPS
   alpha = alpha - pi;
 end
-
-return
