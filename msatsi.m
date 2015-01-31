@@ -185,7 +185,7 @@ for i=1:size(XY_UNIQUE,1)
   end
 end
 
-%==== Perform SATSI inversion. ================================================
+%==== Perform SATSI inversion. ===========================================
 sat_output_file = [projectname '/' projectname '.out'];
 satsi_cmstr = [sat_input_file ' ' sat_output_file ' ' num2str(damping_coeff)];
 
@@ -199,7 +199,10 @@ end
 disp(command);
 [status] = system(command);
 disp(['Exit status = ' num2str(status) ]);
+%==== Read SATSI out file and keep best solutions ========================
 
+ BEST_TENSOR = read_out(projectname,GRIDS,is_2D);
+ BEST_TRPL = get_trpl(BEST_TENSOR,is_2D);
 
 %==== Run BOOTMECH (bootstrap resampling) ================================
 sat_file_temp = [ projectname '.sat'];
@@ -297,6 +300,7 @@ for i=1:size(XY_UNIQUE,1)
     GRID(i,:) = [x y N_EVENTS(i)]; 
     sbootfile = sprintf('%d_%d.slboot',x,y);
     I_SEL = SLBOOT_TENSOR(:,1) == x & SLBOOT_TENSOR(:,2) == y;
+    I_BEST = BEST_TENSOR(:,1) == x & BEST_TENSOR(:,2) == y;
   else
     z = XY_UNIQUE(i,3);
     t = XY_UNIQUE(i,4);
@@ -304,6 +308,7 @@ for i=1:size(XY_UNIQUE,1)
     GRID(i,:) = [x y z t N_EVENTS(i)];
     sbootfile = sprintf('%d_%d_%d_%d.slboot',x,y,z,t);
     I_SEL = SLBOOT_TENSOR(:,1) == x & SLBOOT_TENSOR(:,2) == y & SLBOOT_TENSOR(:,3) == z & SLBOOT_TENSOR(:,4) == t;
+    I_BEST = BEST_TENSOR(:,1) == x & BEST_TENSOR(:,2) == y & BEST_TENSOR(:,3) == z & BEST_TENSOR(:,4) == t; 
   end
   
   % Generate .slboot file with single grid set.
@@ -311,6 +316,10 @@ for i=1:size(XY_UNIQUE,1)
     delete(sbootfile);
   end
   fid2 = fopen(sbootfile,'w');
+  % Print best solutions as first lines
+  fprintf(fid2, '%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n', ...
+    [BEST_TENSOR(I_BEST,(3+n_dim_add):end) BEST_TRPL(I_BEST,(3+n_dim_add):end)]');
+  % Print the bootstrap resamplings
   fprintf(fid2, '%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n', ...
     [SLBOOT_TENSOR(I_SEL,(3+n_dim_add):end) SLBOOT_TRPL(I_SEL,(3+n_dim_add):end)]');
   fclose(fid2);  
@@ -918,6 +927,108 @@ ylabel('Model length');
 title({'Trade-off curve',caption});
 print('-dpng','-r300',[projectname '/' projectname '_tradeoff.png']);
 close all;
+%------------------------------------------------------------------------
+% Read output file with the best stress tensor solutions
+%------------------------------------------------------------------------
+function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
+
+fid = fopen([projectname '\' projectname '.out']);
+tline = fgetl(fid);
+if is_2D
+    BEST_TENSOR = zeros(size(GRIDS,1),8);
+    k = 1;
+    while ischar(tline)      % While we have string lines...
+        if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 27
+            % Headers of the file
+        elseif length(tline) == 67
+            xb = str2double(strtrim(tline(1:3)));
+            yb = str2double(strtrim(tline(5:7)));
+            see = str2double(strtrim(tline(9:17)));
+            sen = str2double(strtrim(tline(19:27)));
+            seu = str2double(strtrim(tline(29:37)));
+            snn = str2double(strtrim(tline(39:47)));
+            snu = str2double(strtrim(tline(49:57)));
+            suu = str2double(strtrim(tline(59:67)));
+            
+            BEST_TENSOR(k,:) = [xb yb see sen seu snn snu suu];
+            k = k + 1;
+            if k > size(GRIDS,1)
+                break
+            end
+        end
+        tline = fgetl(fid);
+    end
+else
+   BEST_TENSOR = zeros(size(GRIDS,1),10);
+    k = 1;
+    while ischar(tline)      % While we have string lines...
+        if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 31
+            % Headers of the file
+        elseif length(tline) == 75
+            xb = str2double(strtrim(tline(1:3)));
+            yb = str2double(strtrim(tline(5:7)));
+            zb = str2double(strtrim(tline(9:11)));
+            tb = str2double(strtrim(tline(13:15)));
+            see = str2double(strtrim(tline(17:25)));
+            sen = str2double(strtrim(tline(27:35)));
+            seu = str2double(strtrim(tline(37:45)));
+            snn = str2double(strtrim(tline(47:55)));
+            snu = str2double(strtrim(tline(57:65)));
+            suu = str2double(strtrim(tline(67:75)));
+            
+            BEST_TENSOR(k,:) = [xb yb zb tb see sen seu snn snu suu];
+            k = k + 1;
+            if k > size(GRIDS,1)
+                break
+            end
+        end
+        tline = fgetl(fid);
+    end
+end
+fclose(fid);
+%------------------------------------------------------------------------
+% Calculate trend and plunges of the best solution stress tensors
+%------------------------------------------------------------------------
+function BEST_TRPL = get_trpl(BEST_TENSOR,is_2D)
+
+% Select one stress tensor for each grid
+if is_2D
+    I =0;
+else
+    I = 2;
+end    
+BEST_TRPL = zeros(size(BEST_TENSOR,1),9+I);
+for i = 1:size(BEST_TENSOR,1)
+    STRESS_LINE = BEST_TENSOR(i,3+I:end);
+    STRESS = [STRESS_LINE(1) STRESS_LINE(2) STRESS_LINE(3); ...
+        STRESS_LINE(2) STRESS_LINE(4) STRESS_LINE(5); ...
+        STRESS_LINE(3) STRESS_LINE(5) STRESS_LINE(6)];
+    
+    % Must I replace the last component for the condition of tr =0 ?
+    % Calculate eigenvalues and phi
+    [VECS,D] = eig(STRESS);
+    LAM = diag(D);
+    [LAM,IX] = sort(LAM); % Sort from smaller to largest, since tension >0 in SATSI
+    VECS = VECS(:,IX);
+    phi = (LAM(2) - LAM(3))/(LAM(1) - LAM(3));
+    % Define trend and plunge of each eigenvector
+    E = VECS(1,:); N = VECS(2,:); U = VECS(3,:);
+    Z = sqrt(E.^2 + N.^2);
+    PPLG = atan2(-U,Z) * 180/pi;
+    for j = 1:3
+        if PPLG(j) < 0
+            PPLG(j) = -1*PPLG(j);
+            E(j) = -1*E(j);
+            N(j) = -1*N(j);
+        end
+    end
+    PDIR = atan2(E,N) * 180/pi;
+    
+    BEST_TRPL(i,:) = [BEST_TENSOR(i,1:2+I)...
+        phi PDIR(1) PPLG(1) PDIR(2) PPLG(2) PDIR(3) PPLG(3)];
+end
+
+
 
 
 
