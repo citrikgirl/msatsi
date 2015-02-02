@@ -59,33 +59,37 @@ else
   T = TABLE(:,4);
 end
 
+% Get the absolute path of msatsi.m and keep the path information only.
+msatsi_path = mfilename('fullpath');
+msatsi_path = fileparts(msatsi_path);
+
 % Determine platform (Windows / Linux is supported)
 archstr = computer('arch');
 if strcmp(archstr,'win32') || strcmp(archstr,'win64')
   %  win = true;
   if is_2D
-    exe_satsi = 'satsi2d.exe';
-    exe_tradeoff = 'satsi2d_tradeoff.exe';
-    exe_bootmech = 'bootmech2d.exe';
-    exe_bootuncert = 'bootuncert.exe';
+    exe_satsi = [msatsi_path '\satsi2d.exe'];
+    exe_tradeoff = [msatsi_path '\satsi2d_tradeoff.exe'];
+    exe_bootmech = [msatsi_path '\bootmech2d.exe'];
+    exe_bootuncert = [msatsi_path '\bootuncert.exe'];
   else
-    exe_satsi = 'satsi4d.exe';
-    exe_tradeoff = 'satsi4d_tradeoff.exe';
-    exe_bootmech = 'bootmech4d.exe';
-    exe_bootuncert = 'bootuncert.exe';
+    exe_satsi = [msatsi_path '\satsi4d.exe'];
+    exe_tradeoff = [msatsi_path '\satsi4d_tradeoff.exe'];
+    exe_bootmech = [msatsi_path '\bootmech4d.exe'];
+    exe_bootuncert = [msatsi_path '\bootuncert.exe'];
   end
 elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
   %  win = false;
   if is_2D
-    exe_satsi = './satsi_2D';
-    exe_tradeoff = './satsi_2D_tradeoff';
-    exe_bootmech = './bootmech_2D';
-    exe_bootuncert = './boot_uncert';
+    exe_satsi = '/satsi_2D';
+    exe_tradeoff = '/satsi_2D_tradeoff';
+    exe_bootmech = '/bootmech_2D';
+    exe_bootuncert = '/boot_uncert';
   else
-    exe_satsi = './satsi_4D';
-    exe_tradeoff = './satsi_4D_tradeoff';
-    exe_bootmech = './bootmech_4D';
-    exe_bootuncert = './boot_uncert';
+    exe_satsi = '/satsi_4D';
+    exe_tradeoff = '/satsi_4D_tradeoff';
+    exe_bootmech = '/bootmech_4D';
+    exe_bootuncert = '/boot_uncert';
   end
 else
   error('Platform is not supported.');
