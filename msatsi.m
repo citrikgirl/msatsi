@@ -179,15 +179,15 @@ if damping
     [damping_coeff] = tradeoff(projectname,caption,is_2D,ts_damp_ratio,exe_tradeoff);
 end
 
-XY_UNIQUE = unique([X Y ap], 'rows');
-N_EVENTS = zeros(size(XY_UNIQUE,1),1);
+GRIDS = unique([X Y ap], 'rows');
+N_EVENTS = zeros(size(GRIDS,1),1);
 
-for i=1:size(XY_UNIQUE,1)
+for i=1:size(GRIDS,1)
   switch is_2D
     case true
-      N_EVENTS(i) = sum(X == XY_UNIQUE(i,1) & Y == XY_UNIQUE(i,2));
+      N_EVENTS(i) = sum(X == GRIDS(i,1) & Y == GRIDS(i,2));
     case false
-      N_EVENTS(i) = sum(X == XY_UNIQUE(i,1) & Y == XY_UNIQUE(i,2) & Z == XY_UNIQUE(i,3) & T == XY_UNIQUE(i,4));
+      N_EVENTS(i) = sum(X == GRIDS(i,1) & Y == GRIDS(i,2) & Z == GRIDS(i,3) & T == GRIDS(i,4));
   end
 end
 
@@ -234,7 +234,7 @@ if exist(grid_uncertainty,'file'); delete(grid_uncertainty); end
 fid = fopen(bootstrap_file_temp,'r');
 try
 tline = fgetl(fid);
-n_lines_slboot = n_bootstrap_resamplings * size(XY_UNIQUE,1); 
+n_lines_slboot = n_bootstrap_resamplings * size(GRIDS,1); 
 if is_2D
   n_dim_add = 0;
   str_a = '%d %d %f %f %f %f %f %f';
@@ -280,19 +280,19 @@ end
 
 disp(['Executing ' upper(exe_bootuncert)]);
 fid3 = fopen(grid_uncertainty,'a'); 
-GRID = NaN*ones(size(XY_UNIQUE,1),3+n_dim_add);
+GRID = NaN*ones(size(GRIDS,1),3+n_dim_add);
 GRID_REJ = [];
-for i=1:size(XY_UNIQUE,1)
+for i=1:size(GRIDS,1)
   
   % Skip processing if not enough events.
   if N_EVENTS(i) < min_events_per_node
-    GRID_REJ = [GRID_REJ; XY_UNIQUE(i,:)];  %#ok<AGROW>
+    GRID_REJ = [GRID_REJ; GRIDS(i,:)];  %#ok<AGROW>
     continue;
   end
   
   % Store grid points.
-  x = XY_UNIQUE(i,1);
-  y = XY_UNIQUE(i,2);
+  x = GRIDS(i,1);
+  y = GRIDS(i,2);
   if(is_2D)
     fprintf(fid3,'%d %d %d\r\n',x,y,N_EVENTS(i));
     GRID(i,:) = [x y N_EVENTS(i)]; 
@@ -300,8 +300,8 @@ for i=1:size(XY_UNIQUE,1)
     I_SEL = SLBOOT_TENSOR(:,1) == x & SLBOOT_TENSOR(:,2) == y;
     I_BEST = BEST_TENSOR(:,1) == x & BEST_TENSOR(:,2) == y;
   else
-    z = XY_UNIQUE(i,3);
-    t = XY_UNIQUE(i,4);
+    z = GRIDS(i,3);
+    t = GRIDS(i,4);
     fprintf(fid3,'%d %d %d %d %d\r\n',x,y,z,t,N_EVENTS(i));
     GRID(i,:) = [x y z t N_EVENTS(i)];
     sbootfile = sprintf('%d_%d_%d_%d.slboot',x,y,z,t);
@@ -426,7 +426,7 @@ movefile([projectname '.slboot_tensor'],[projectname '/']);
 movefile([projectname '.slboot_trpl'],[projectname '/']);
 if exist(grid_uncertainty,'file'); delete(grid_uncertainty); end
 if exist(bootstrap_file_temp,'file'); delete(bootstrap_file_temp); end
-for i=1:size(XY_UNIQUE,1)
+for i=1:size(GRIDS,1)
     sbootfile = sprintf('%d_%d.slboot',x,y); 
     if exist(sbootfile,'file')     
         delete(sbootfile);
@@ -726,26 +726,26 @@ switch is_2D
     case true
         switch single
             case false
-             XY_UNIQUE = unique(TABLE(:,1:2), 'rows');
+             GRIDS = unique(TABLE(:,1:2), 'rows');
             case true
-             XY_UNIQUE = [0,0];
+             GRIDS = [0,0];
         end
     case false
-        XY_UNIQUE = unique(TABLE(:,1:4), 'rows');
+        GRIDS = unique(TABLE(:,1:4), 'rows');
 end
 
-for i = 1:size(XY_UNIQUE,1)
+for i = 1:size(GRIDS,1)
     
-    x = XY_UNIQUE(i,1);
-    y = XY_UNIQUE(i,2);
+    x = GRIDS(i,1);
+    y = GRIDS(i,2);
     
     switch is_2D
         case true
             I = TABLE(:,1) == x & TABLE(:,2) == y;
             n = 0;
         case false
-            z = XY_UNIQUE(i,3);
-            t = XY_UNIQUE(i,4);
+            z = GRIDS(i,3);
+            t = GRIDS(i,4);
             I = TABLE(:,1) == x & TABLE(:,2) == y & TABLE(:,3) == z & TABLE(:,4) == t;
             n = 2;
     end
