@@ -29,9 +29,7 @@ p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
 p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction_min',0.6, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction_max',0.9, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction_step',0.05, @(x) isscalar(x) && x > 0);
+p.addParamValue('Friction',[0.6:0.05:0.9], @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -57,9 +55,7 @@ fraction_corr_picker = 1 - p.Results.FractionValidFaultPlanes;
 min_events_per_node = p.Results.MinEventsNode;
 n_bootstrap_resamplings = p.Results.BootstrapResamplings;
 ts_damp_ratio = p.Results.TimeSpaceDampingRatio;
-fric_min = p.Results.Friction_min;
-fric_max = p.Results.Friction_max;
-fric_step = p.Results.Friction_step;
+FRICTION = p.Results.Friction;
 N_iter = p.Results.N_stab_iterations;
 % Define if inversion is 2D or 4D
 if size(TABLE,2) == 5
@@ -179,44 +175,32 @@ caption = [p.Results.Caption ' (' projectname ') '];
 
 % ===========Addition of Vaclav Routine STARTS HERE =====================
 
-% Calculate auxiliar fault planes
-STRIKE2 = zeros(size(STRIKE1)); DIP_ANGLE2 = zeros(size(STRIKE1)); RAKE2 = zeros(size(STRIKE1));
-for i = 1:length(STRIKE1)
-    [STRIKE2(i),DIP_ANGLE2(i),RAKE2(i)] = define_second_plane(STRIKE1(i),DIP_ANGLE1(i),RAKE1(i));
-end
-STRIKE2(STRIKE2<0) = STRIKE2(STRIKE2<0) + 360;
-STRIKE2(STRIKE2>=360) = STRIKE2(STRIKE2>=360) - 360;
-
-%---Perform first stress inversion "guess" using the random fault planes---
+%---Perform initial stress inversion using random fault planes---
 % To be implemented: N° of realizations
 sat_out_file_0 = [projectname '/' projectname '_0.out'];
 satsi_cmstr = [sat_input_file ' ' sat_out_file_0 ' ' num2str(0)];
 
 disp(['Executing ' upper(exe_satsi) 'for initial solution']);
 switch is_2D
-    case true
-        command = [exe_satsi ' ' satsi_cmstr];
-    case false
-        command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
+    case true;  command = [exe_satsi ' ' satsi_cmstr];
+    case false; command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
 end
-disp(command);
-[status] = system(command);
+disp(command); [status] = system(command);
 disp(['Exit status = ' num2str(status) ]);
 ini = true;
 BEST_TENSOR_0 = read_out(projectname,GRIDS,is_2D,ini);
 ini = false;
 
 %------------ Loop over different friction coefficients ---------------
-MEAN_INST = zeros(size(BEST_TENSOR_0,1),length([fric_min:fric_step:fric_max]));
-friction = fric_min:fric_step:fric_max;
-for i_fric = 1: length(friction)
-    fric = friction(i_fric);
+MEAN_INST = NaN .* ones(size(BEST_TENSOR_0,1),length(FRICTION));
+for i_fric = 1: length(FRICTION)
+    fric = FRICTION(i_fric);
     %---------- Loop over different iterations ----------
-    NORM_CONVERGENCE = zeros(N_iter,1);
+    CONVERGENCE = zeros(N_iter,1);
     for i_iter = 1:N_iter
-        
         [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,fric,X,Y,...
-            STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2);
+            STRIKE1,DIP_ANGLE1,RAKE1);
+        STRIKE = round(STRIKE); DIP_ANGLE = round(DIP_ANGLE); RAKE = round(RAKE);
         DIP_DIRECTION = STRIKE + 90;
         % Perform the stress inversion still without damping
         savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
@@ -227,27 +211,26 @@ for i_fric = 1: length(friction)
             case true;  command = [exe_satsi ' ' satsi_cmstr];
             case false; command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
         end
-        disp(command);
-        [status] = system(command);
+        disp(command); [status] = system(command);
         disp(['Exit status = ' num2str(status) ]);
         BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
-        NORM_CONVERGENCE(i_iter) = norm(BEST_TENSOR(:,3:end) - BEST_TENSOR_0(:,3:end));
+        I_CON = (STRIKE - STRIKE1) ~= 0;
+        CONVERGENCE(i_iter) = sum(I_CON);
         BEST_TENSOR_0 = BEST_TENSOR;
+        STRIKE1 = STRIKE; DIP_ANGLE1 = DIP_ANGLE; RAKE1 = RAKE; % Actually not done in Vaclav's
     end
-      
     for j = 1:size(BEST_TENSOR,1)
         x = BEST_TENSOR(j,1); y = BEST_TENSOR(j,2);
         I = X == x & Y == y;   
-        MEAN_INST(j,i_fric) = mean(INST(I));
+        MEAN_INST(j,i_fric) = median(INST(I)); % replacement from mean
     end
-    
 end
 [INST_MAX,i_index] = max(MEAN_INST,[],2);
 OPT_FRIC = friction(i_index);
 %----- Final stress inversions and stability criteria with optimun friction ---------------
 for i_iter = 1:N_iter
     [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
-        STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2);
+        STRIKE1,DIP_ANGLE1,RAKE1);
     DIP_DIRECTION = STRIKE + 90;
     % Perform the stress inversion still without damping
     savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
@@ -267,18 +250,15 @@ for i_iter = 1:N_iter
 end
 
 if is_2D
-    TABLE = [X Y STRIKE DIP_ANGLE RAKE];
+    TABLE = round([X Y DIP_DIRECTION DIP_ANGLE RAKE]);
 else
-    TABLE = [X Y Z T STRIKE DIP_ANGLE RAKE];
+    TABLE = round([X Y Z T DIP_DIRECTION DIP_ANGLE RAKE]);
 end
-DIP_DIRECTION = STRIKE + 90;
-savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
 
 %==== Plot pictures with P/T axes. ============================================
 if PT
     plotaxes(TABLE, projectname, caption,is_2D,single)
 end
-
 
 %======= Calculate damping parameter if necessary. ============================
 if damping
@@ -1144,8 +1124,17 @@ end
 % (Routine adapted from the original routine from V. Varycuk)
 %------------------------------------------------------------------------
 function [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR,fric,X,Y,...
-            STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2)
+            STRIKE1,DIP_ANGLE1,RAKE1)
 
+% Calculate auxiliar fault planes
+STRIKE2 = zeros(size(STRIKE1)); DIP_ANGLE2 = zeros(size(STRIKE1)); RAKE2 = zeros(size(STRIKE1));
+for i = 1:length(STRIKE1)
+    [STRIKE2(i),DIP_ANGLE2(i),RAKE2(i)] = define_second_plane(STRIKE1(i),DIP_ANGLE1(i),RAKE1(i));
+end
+STRIKE2(STRIKE2<0) = STRIKE2(STRIKE2<0) + 360;
+STRIKE2(STRIKE2>=360) = STRIKE2(STRIKE2>=360) - 360;
+
+% Define output variables
 STRIKE = zeros(size(STRIKE1));
 DIP_ANGLE = zeros(size(STRIKE1));
 RAKE = zeros(size(STRIKE1));
