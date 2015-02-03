@@ -7,7 +7,11 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.7 $  $Date: 2014.06.02 $ 
+%   $Revision: 1.0.9 $  $Date: 2015.02.02 $ 
+
+% New version of MSATSI corrected by the best solution and 
+% adding the criterion instability from Vaclav Vavrycuk.
+%-------------------------------------------------------------------------
 
 % Interpretation of input parameters.
 p = inputParser;
@@ -22,6 +26,12 @@ p.addParamValue('BootstrapResamplings', 2000, @(x) isscalar(x) && x > 0);
 p.addParamValue('Caption', '', @(x) ischar(x));  
 p.addParamValue('TimeSpaceDampingRatio', 1, @(x) isnumeric(x));
 p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
+% New input parameters:
+p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
+p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
+p.addParamValue('Friction_min',0.6, @(x) isscalar(x) && x > 0);
+p.addParamValue('Friction_max',0.9, @(x) isscalar(x) && x > 0);
+p.addParamValue('Friction_step',0.05, @(x) isscalar(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -47,7 +57,10 @@ fraction_corr_picker = 1 - p.Results.FractionValidFaultPlanes;
 min_events_per_node = p.Results.MinEventsNode;
 n_bootstrap_resamplings = p.Results.BootstrapResamplings;
 ts_damp_ratio = p.Results.TimeSpaceDampingRatio;
-
+fric_min = p.Results.Friction_min;
+fric_max = p.Results.Friction_max;
+fric_step = p.Results.Friction_step;
+N_iter = p.Results.N_stab_iterations;
 % Define if inversion is 2D or 4D
 if size(TABLE,2) == 5
   is_2D = true;
@@ -125,9 +138,12 @@ switch is_2D
     end
 end
 
-DIP_DIRECTION = TABLE(:,n + 3);
-DIP_ANGLE = TABLE(:,n + 4);
-RAKE = TABLE(:,n + 5);
+DIP_DIRECTION1 = TABLE(:,n + 3);
+STRIKE1 = DIP_DIRECTION1 - 90;
+STRIKE1(STRIKE1<0) = STRIKE1(STRIKE1<0) + 360;
+STRIKE1(STRIKE1>=360) = STRIKE1(STRIKE1>=360) - 360;
+DIP_ANGLE1 = TABLE(:,n + 4);
+RAKE1 = TABLE(:,n + 5);
 comment = 'default';
     
 % Save input SATSI (.sat) file.
@@ -158,9 +174,105 @@ switch is_2D
     ap = [Z T];
 end
 
-savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
-
+savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION1 DIP_ANGLE1 RAKE1],is_2D,single);
 caption = [p.Results.Caption ' (' projectname ') '];
+
+% ===========Addition of Vaclav Routine STARTS HERE =====================
+
+% Calculate auxiliar fault planes
+STRIKE2 = zeros(size(STRIKE1)); DIP_ANGLE2 = zeros(size(STRIKE1)); RAKE2 = zeros(size(STRIKE1));
+for i = 1:length(STRIKE1)
+    [STRIKE2(i),DIP_ANGLE2(i),RAKE2(i)] = define_second_plane(STRIKE1(i),DIP_ANGLE1(i),RAKE1(i));
+end
+STRIKE2(STRIKE2<0) = STRIKE2(STRIKE2<0) + 360;
+STRIKE2(STRIKE2>=360) = STRIKE2(STRIKE2>=360) - 360;
+
+%---Perform first stress inversion "guess" using the random fault planes---
+% To be implemented: N° of realizations
+sat_out_file_0 = [projectname '/' projectname '_0.out'];
+satsi_cmstr = [sat_input_file ' ' sat_out_file_0 ' ' num2str(0)];
+
+disp(['Executing ' upper(exe_satsi) 'for initial solution']);
+switch is_2D
+    case true
+        command = [exe_satsi ' ' satsi_cmstr];
+    case false
+        command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
+end
+disp(command);
+[status] = system(command);
+disp(['Exit status = ' num2str(status) ]);
+ini = true;
+BEST_TENSOR_0 = read_out(projectname,GRIDS,is_2D,ini);
+ini = false;
+
+%------------ Loop over different friction coefficients ---------------
+MEAN_INST = zeros(size(BEST_TENSOR_0,1),length([fric_min:fric_step:fric_max]));
+friction = fric_min:fric_step:fric_max;
+for i_fric = 1: length(friction)
+    fric = friction(i_fric);
+    %---------- Loop over different iterations ----------
+    NORM_CONVERGENCE = zeros(N_iter,1);
+    for i_iter = 1:N_iter
+        
+        [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,fric,X,Y,...
+            STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2);
+        DIP_DIRECTION = STRIKE + 90;
+        % Perform the stress inversion still without damping
+        savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
+        sat_out_file = [projectname '/' projectname '.out'];
+        satsi_cmstr = [sat_input_file ' ' sat_out_file ' ' num2str(0)];
+        disp(['Executing ' upper(exe_satsi) 'for initial solution']);
+        switch is_2D
+            case true;  command = [exe_satsi ' ' satsi_cmstr];
+            case false; command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
+        end
+        disp(command);
+        [status] = system(command);
+        disp(['Exit status = ' num2str(status) ]);
+        BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
+        NORM_CONVERGENCE(i_iter) = norm(BEST_TENSOR(:,3:end) - BEST_TENSOR_0(:,3:end));
+        BEST_TENSOR_0 = BEST_TENSOR;
+    end
+      
+    for j = 1:size(BEST_TENSOR,1)
+        x = BEST_TENSOR(j,1); y = BEST_TENSOR(j,2);
+        I = X == x & Y == y;   
+        MEAN_INST(j,i_fric) = mean(INST(I));
+    end
+    
+end
+[INST_MAX,i_index] = max(MEAN_INST,[],2);
+OPT_FRIC = friction(i_index);
+%----- Final stress inversions and stability criteria with optimun friction ---------------
+for i_iter = 1:N_iter
+    [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
+        STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2);
+    DIP_DIRECTION = STRIKE + 90;
+    % Perform the stress inversion still without damping
+    savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
+    sat_out_file = [projectname '/' projectname '.out'];
+    satsi_cmstr = [sat_input_file ' ' sat_out_file ' ' num2str(0)];
+    disp(['Executing ' upper(exe_satsi) 'for initial solution']);
+    switch is_2D
+        case true;  command = [exe_satsi ' ' satsi_cmstr];
+        case false; command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
+    end
+    disp(command);
+    [status] = system(command);
+    disp(['Exit status = ' num2str(status) ]);
+    BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
+    NORM_CONVERGENCE(i_iter) = norm(BEST_TENSOR(:,3:end) - BEST_TENSOR_0(:,3:end));
+    BEST_TENSOR_0 = BEST_TENSOR;
+end
+
+if is_2D
+    TABLE = [X Y STRIKE DIP_ANGLE RAKE];
+else
+    TABLE = [X Y Z T STRIKE DIP_ANGLE RAKE];
+end
+DIP_DIRECTION = STRIKE + 90;
+savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
 
 %==== Plot pictures with P/T axes. ============================================
 if PT
@@ -185,7 +297,7 @@ for i=1:size(XY_UNIQUE,1)
   end
 end
 
-%==== Perform SATSI inversion. ===========================================
+% ==== Perform SATSI inversion WITH damping coefficient ===================
 sat_output_file = [projectname '/' projectname '.out'];
 satsi_cmstr = [sat_input_file ' ' sat_output_file ' ' num2str(damping_coeff)];
 
@@ -199,8 +311,8 @@ end
 disp(command);
 [status] = system(command);
 disp(['Exit status = ' num2str(status) ]);
-%==== Read SATSI out file and keep best solutions ========================
 
+%==== Read SATSI out file and keep best solutions ========================
  BEST_TENSOR = read_out(projectname,GRIDS,is_2D);
  BEST_TRPL = get_trpl(BEST_TENSOR,is_2D);
 
@@ -491,7 +603,6 @@ close all;
 
 function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
 
-%try
     fid = fopen(filename, mode);
     if nargin == 7 && strcmp(varargin{1},'nohead')
     else
@@ -527,9 +638,6 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
         end
     end
     fclose(fid);
-   % catch Me
-   % error('Unable to write .SAT file. Aborted.');
-%end
 
 %------------------------------------------------------------------------
 function [str2, dip2, rake2] = define_second_plane(str1,dip1,rake1)
@@ -930,9 +1038,13 @@ close all;
 %------------------------------------------------------------------------
 % Read output file with the best stress tensor solutions
 %------------------------------------------------------------------------
-function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
+function BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini)
 
-fid = fopen([projectname '\' projectname '.out']);
+if ini == true
+    fid = fopen([projectname '\' projectname '_0.out']);
+else
+    fid = fopen([projectname '\' projectname '.out']);
+end
 tline = fgetl(fid);
 if is_2D
     BEST_TENSOR = zeros(size(GRIDS,1),8);
@@ -1026,6 +1138,106 @@ for i = 1:size(BEST_TENSOR,1)
     
     BEST_TRPL(i,:) = [BEST_TENSOR(i,1:2+I)...
         phi PDIR(1) PPLG(1) PDIR(2) PPLG(2) PDIR(3) PPLG(3)];
+end
+%------------------------------------------------------------------------
+% Perform instability criteria to choose best nodal planes
+% (Routine adapted from the original routine from V. Varycuk)
+%------------------------------------------------------------------------
+function [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR,fric,X,Y,...
+            STRIKE1,DIP_ANGLE1,RAKE1,STRIKE2,DIP_ANGLE2,RAKE2)
+
+STRIKE = zeros(size(STRIKE1));
+DIP_ANGLE = zeros(size(STRIKE1));
+RAKE = zeros(size(STRIKE1));
+INST = zeros(size(STRIKE1));
+
+TAU = [BEST_TENSOR(:,3) BEST_TENSOR(:,4) BEST_TENSOR(:,5)...
+    BEST_TENSOR(:,4) BEST_TENSOR(:,6) BEST_TENSOR(:,7) ...
+    BEST_TENSOR(:,5) BEST_TENSOR(:,7) BEST_TENSOR(:,8)];
+
+TAU = TAU';
+TAU = reshape(TAU,9,1,size(TAU,2)); TAU = reshape(TAU,3,3,size(TAU,3));
+
+if numel(fric) == 1
+    FRIC = fric .* ones(size(STRIKE));
+else
+    FRIC = ones(size(STRIKE));
+end
+
+for i = 1: size(BEST_TENSOR,1) % Loop over each separate stress state:
+    x = BEST_TENSOR(i,1); y = BEST_TENSOR(i,2); 
+    I = (X == x & Y == y); 
+    STR1_T = STRIKE1(I); DIP1_T = DIP_ANGLE1(I); RAK1_T = RAKE1(I);
+    STR2_T = STRIKE2(I); DIP2_T = DIP_ANGLE2(I); RAK2_T = RAKE2(I);
+    
+    if numel(fric) == 1
+        FRIC_T = FRIC(I);
+    else
+        FRIC_T = fric(i).*ones(size(STRIKE1(I)));
+        FRIC(I) = FRIC_T;
+    end
+    sigma = sort(eig(TAU(:,:,i)));
+    shape_ratio = (sigma(1)-sigma(2))/(sigma(1)-sigma(3));
+    %--------------------------------------------------------------------------
+    % principal stress directions
+    [vector diag_tensor] = eig(TAU(:,:,i));
+    value = eig(diag_tensor);
+    [value_sorted,IX]=sort(value);
+    
+    sigma_vector_1  = vector(:,IX(1));
+    sigma_vector_2  = vector(:,IX(2));
+    sigma_vector_3  = vector(:,IX(3));
+    %--------------------------------------------------------------------------
+    %  two alternative fault normals:
+    
+    % first fault normal
+    N1_1 = -sin(DIP1_T*pi/180).*sin(STR1_T*pi/180);
+    N1_2 =  sin(DIP1_T*pi/180).*cos(STR1_T*pi/180);
+    N1_3 = -cos(DIP1_T*pi/180);
+    % second fault normal
+    N2_1 = -sin(DIP2_T*pi/180).*sin(STR2_T*pi/180);
+    N2_2 =  sin(DIP2_T*pi/180).*cos(STR2_T*pi/180);
+    N2_3 = -cos(DIP2_T*pi/180);
+    %--------------------------------------------------------------------------
+    % notation: sigma1 = 1; sigma2 = 1-2*shape_ratio; sigma3 = -1
+    %--------------------------------------------------------------------------
+    % fault plane normals in the coordinate system of the principal stress axes
+    N1_1_ = N1_1.*sigma_vector_1(1) + N1_2.*sigma_vector_1(2) + N1_3.*sigma_vector_1(3);
+    N1_2_ = N1_1.*sigma_vector_2(1) + N1_2.*sigma_vector_2(2) + N1_3.*sigma_vector_2(3);
+    N1_3_ = N1_1.*sigma_vector_3(1) + N1_2.*sigma_vector_3(2) + N1_3.*sigma_vector_3(3);
+    
+    N2_1_ = N2_1.*sigma_vector_1(1) + N2_2.*sigma_vector_1(2) + N2_3.*sigma_vector_1(3);
+    N2_2_ = N2_1.*sigma_vector_2(1) + N2_2.*sigma_vector_2(2) + N2_3.*sigma_vector_2(3);
+    N2_3_ = N2_1.*sigma_vector_3(1) + N2_2.*sigma_vector_3(2) + N2_3.*sigma_vector_3(3);
+    
+    %--------------------------------------------------------------------------
+    % 1. alternative
+    %--------------------------------------------------------------------------
+    tau_shear_n1_norm   = sqrt(N1_1_.^2 + (1 - 2 * shape_ratio)^2 * N1_2_.^2. + N1_3_.^2 - (N1_1_.^2 + (1-2*shape_ratio) * N1_2_.^2 - N1_3_.^2).^2);
+    tau_normal_n1_norm = (N1_1_.^2 + (1 - 2 * shape_ratio) * N1_2_.^2 - N1_3_.^2);
+    
+    %--------------------------------------------------------------------------
+    % 2. alternative
+    %--------------------------------------------------------------------------
+    tau_shear_n2_norm   = sqrt(N2_1_.^2+(1-2*shape_ratio)^2*N2_2_.^2.+N2_3_.^2-(N2_1_.^2+(1-2*shape_ratio)*N2_2_.^2-N2_3_.^2).^2);
+    tau_normal_n2_norm = ( N2_1_.^2 + (1 - 2 * shape_ratio) * N2_2_.^2 - N2_3_.^2);
+    
+    %--------------------------------------------------------------------------
+    % instability
+    %--------------------------------------------------------------------------
+    instability_n1 = (tau_shear_n1_norm - FRIC_T.*(tau_normal_n1_norm-1))./(FRIC_T + sqrt(1 + FRIC_T.^2));
+    instability_n2 = (tau_shear_n2_norm - FRIC_T.*(tau_normal_n2_norm-1))./(FRIC_T + sqrt(1 + FRIC_T.^2));
+    
+    [instability i_index] = max([instability_n1'; instability_n2']);
+    
+    INST(I) = instability';
+    %--------------------------------------------------------------------------
+    % identification of the fault according to the instability criterion
+    %--------------------------------------------------------------------------
+    STRIKE(I) = (i_index'-1).*STR2_T+(2-i_index').*STR1_T;
+    DIP_ANGLE(I)    = (i_index'-1).*DIP2_T   +(2-i_index').*DIP1_T;
+    RAKE(I)   = (i_index'-1).*RAK2_T  +(2-i_index').*RAK1_T;
+    
 end
 
 
