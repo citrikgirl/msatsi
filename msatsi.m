@@ -934,13 +934,14 @@ function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
 
 fid = fopen([projectname '\' projectname '.out']);
 tline = fgetl(fid);
-if is_2D
+if is_2D   % make it only str for fscanf
     BEST_TENSOR = zeros(size(GRIDS,1),8);
     k = 1;
     while ischar(tline)      % While we have string lines...
         if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 27
             % Headers of the file
         elseif length(tline) == 67
+            % fscanf think about
             xb = str2double(strtrim(tline(1:3)));
             yb = str2double(strtrim(tline(5:7)));
             see = str2double(strtrim(tline(9:17)));
@@ -1004,7 +1005,6 @@ for i = 1:size(BEST_TENSOR,1)
         STRESS_LINE(2) STRESS_LINE(4) STRESS_LINE(5); ...
         STRESS_LINE(3) STRESS_LINE(5) STRESS_LINE(6)];
     
-    % Must I replace the last component for the condition of tr =0 ?
     % Calculate eigenvalues and phi
     [VECS,D] = eig(STRESS);
     LAM = diag(D);
