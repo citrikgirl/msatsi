@@ -20,7 +20,7 @@ p.addRequired('TABLE', @(x) isnumeric(x) && (size(x,2) == 5 || size(x,2) == 7));
 p.addParamValue('Damping', 'on', @(x)any(strcmpi(x,{'on','off'})));  
 p.addParamValue('DampingCoeff', 0, @(x) isscalar(x));  
 p.addParamValue('ConfidenceLevel', 95, @(x) isscalar(x) && x > 0 && x < 100);  
-p.addParamValue('FractionValidFaultPlanes', 0.5, @(x) isscalar(x) && x > 0 && x < 1);  
+p.addParamValue('FractionValidFaultPlanes', 0.5, @(x) isscalar(x) && x >= 0 && x <= 1);  
 p.addParamValue('MinEventsNode',20, @(x) isscalar(x) && x > 0);  
 p.addParamValue('BootstrapResamplings', 2000, @(x) isscalar(x) && x > 0);  
 p.addParamValue('Caption', '', @(x) ischar(x));  
@@ -29,7 +29,7 @@ p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
 p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction',[0.6:0.05:0.9], @(x) isvector(x) && x > 0);
+p.addParamValue('Friction',0.6, @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -256,6 +256,8 @@ if is_2D
 else
     TABLE = round([X Y Z T DIP_DIRECTION DIP_ANGLE RAKE]);
 end
+sat_input_file = [projectname '.sat'];
+savesat2(projectname,sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
 
 %==== Plot pictures with P/T axes. ============================================
 if PT
@@ -295,7 +297,7 @@ disp(command);
 disp(['Exit status = ' num2str(status) ]);
 
 %==== Read SATSI out file and keep best solutions ========================
- BEST_TENSOR = read_out(projectname,GRIDS,is_2D);
+ BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
  BEST_TRPL = get_trpl(BEST_TENSOR,is_2D);
 
 %==== Run BOOTMECH (bootstrap resampling) ================================
@@ -311,8 +313,6 @@ end
 
 disp(callline); [status] = system(callline);
 disp(['Exit status = ' num2str(status)]);
-
-
 
 %==== Prepare and Call BOOTUNCERT.EXE ==================================== 
 bootstrap_file_temp = [projectname '.sat.slboot'];  % Output bootstrap file to analyze
@@ -1018,12 +1018,16 @@ close all;
 %------------------------------------------------------------------------
 % Read output file with the best stress tensor solutions
 %------------------------------------------------------------------------
-function BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini,i_iter)
+function BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini,varargin)
 
 if ini == true
     fid = fopen([projectname '\' projectname '_0.out']);
 else
-    fid = fopen([projectname '\' projectname num2str(i_iter) '.out']);
+    if nargin == 5
+        fid = fopen([projectname '\' projectname num2str(varargin{1}) '.out']);
+    else
+        fid = fopen([projectname '\' projectname '.out']);
+    end
 end
 tline = fgetl(fid);
 if is_2D
