@@ -7,7 +7,13 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.7 $  $Date: 2014.06.02 $ 
+%   $Revision: 1.0.8 $  $Date: 2015.02.03 $ 
+% 
+% If you use MSATSI in your research, please refer to the following papers:
+%
+% Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
+% Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+% Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
 
 % Interpretation of input parameters.
 p = inputParser;
@@ -134,7 +140,6 @@ DIP_ANGLE = TABLE(:,n + 4);
 RAKE = TABLE(:,n + 5);
 comment = 'default';
     
-% Save input SATSI (.sat) file.
 if ~exist(projectname,'dir')
   if ~exist(projectname,'file')
     mkdir(projectname);
@@ -153,7 +158,8 @@ else
     return;
   end
 end
-sat_input_file = [projectname '.sat']; % Satsi input
+% Save initial .sat file
+sat_input_file = [projectname '.sat']; 
 
 switch is_2D
   case true
@@ -177,19 +183,19 @@ if damping
     [damping_coeff] = tradeoff(projectname,caption,is_2D,ts_damp_ratio,exe_tradeoff);
 end
 
-XY_UNIQUE = unique([X Y ap], 'rows');
-N_EVENTS = zeros(size(XY_UNIQUE,1),1);
+GRIDS = unique([X Y ap], 'rows');
+N_EVENTS = zeros(size(GRIDS,1),1);
 
-for i=1:size(XY_UNIQUE,1)
+for i=1:size(GRIDS,1)
   switch is_2D
     case true
-      N_EVENTS(i) = sum(X == XY_UNIQUE(i,1) & Y == XY_UNIQUE(i,2));
+      N_EVENTS(i) = sum(X == GRIDS(i,1) & Y == GRIDS(i,2));
     case false
-      N_EVENTS(i) = sum(X == XY_UNIQUE(i,1) & Y == XY_UNIQUE(i,2) & Z == XY_UNIQUE(i,3) & T == XY_UNIQUE(i,4));
+      N_EVENTS(i) = sum(X == GRIDS(i,1) & Y == GRIDS(i,2) & Z == GRIDS(i,3) & T == GRIDS(i,4));
   end
 end
 
-%==== Perform SATSI inversion. ================================================
+%==== Perform SATSI inversion. ===========================================
 sat_output_file = [projectname '/' projectname '.out'];
 satsi_cmstr = [sat_input_file ' ' sat_output_file ' ' num2str(damping_coeff)];
 
@@ -200,14 +206,15 @@ switch is_2D
   case false
     command = [exe_satsi ' ' satsi_cmstr ' ' num2str(ts_damp_ratio)];
 end
-disp(command);
-[status] = system(command);
+disp(command); [status] = system(command);
 disp(['Exit status = ' num2str(status) ]);
+%==== Read SATSI out file and keep best solutions ========================
 
+ BEST_TENSOR = read_out(projectname,GRIDS,is_2D);
+ BEST_TRPL = get_trpl(BEST_TENSOR,is_2D);
 
 %==== Run BOOTMECH (bootstrap resampling) ================================
-sat_file_temp = [ projectname '.sat'];
-boot_cmstr = [sat_file_temp ' ' num2str(n_bootstrap_resamplings) ' ' num2str(fraction_corr_picker) ' ' num2str(damping_coeff)];
+boot_cmstr = [sat_input_file ' ' num2str(n_bootstrap_resamplings) ' ' num2str(fraction_corr_picker) ' ' num2str(damping_coeff)];
 disp(['Executing ' upper(exe_bootmech)]);
 switch is_2D
   case true
@@ -219,25 +226,19 @@ end
 disp(callline); [status] = system(callline);
 disp(['Exit status = ' num2str(status)]);
 
-
-
 %==== Prepare and Call BOOTUNCERT.EXE ==================================== 
-bootstrap_file_temp = [projectname '.sat.slboot'];  % Output bootstrap file to analyze
+bootstrap_file_temp = [projectname '.sat.slboot'];
 boot_uncertainty = [projectname '.summary'];
 grid_uncertainty = [projectname '.grid'];
 boot_uncertainty_ext = [projectname '.summary_ext'];
 
-if exist(boot_uncertainty,'file')  % delete old 'boot_uncertainty' file
-  delete(boot_uncertainty);
-end
-if exist(grid_uncertainty,'file')  % delete old 'grid_uncertainty' file
-  delete(grid_uncertainty);
-end
+if exist(boot_uncertainty,'file'); delete(boot_uncertainty); end  
+if exist(grid_uncertainty,'file'); delete(grid_uncertainty); end
 
 fid = fopen(bootstrap_file_temp,'r');
 try
 tline = fgetl(fid);
-n_lines_slboot = n_bootstrap_resamplings * size(XY_UNIQUE,1); 
+n_lines_slboot = n_bootstrap_resamplings * size(GRIDS,1); 
 if is_2D
   n_dim_add = 0;
   str_a = '%d %d %f %f %f %f %f %f';
@@ -283,31 +284,33 @@ end
 
 disp(['Executing ' upper(exe_bootuncert)]);
 fid3 = fopen(grid_uncertainty,'a'); 
-GRID = NaN*ones(size(XY_UNIQUE,1),3+n_dim_add);
+GRID = NaN*ones(size(GRIDS,1),3+n_dim_add);
 GRID_REJ = [];
-for i=1:size(XY_UNIQUE,1)
+for i=1:size(GRIDS,1)
   
   % Skip processing if not enough events.
   if N_EVENTS(i) < min_events_per_node
-    GRID_REJ = [GRID_REJ; XY_UNIQUE(i,:)];  %#ok<AGROW>
+    GRID_REJ = [GRID_REJ; GRIDS(i,:)];  %#ok<AGROW>
     continue;
   end
   
   % Store grid points.
-  x = XY_UNIQUE(i,1);
-  y = XY_UNIQUE(i,2);
+  x = GRIDS(i,1);
+  y = GRIDS(i,2);
   if(is_2D)
     fprintf(fid3,'%d %d %d\r\n',x,y,N_EVENTS(i));
     GRID(i,:) = [x y N_EVENTS(i)]; 
     sbootfile = sprintf('%d_%d.slboot',x,y);
     I_SEL = SLBOOT_TENSOR(:,1) == x & SLBOOT_TENSOR(:,2) == y;
+    I_BEST = BEST_TENSOR(:,1) == x & BEST_TENSOR(:,2) == y;
   else
-    z = XY_UNIQUE(i,3);
-    t = XY_UNIQUE(i,4);
+    z = GRIDS(i,3);
+    t = GRIDS(i,4);
     fprintf(fid3,'%d %d %d %d %d\r\n',x,y,z,t,N_EVENTS(i));
     GRID(i,:) = [x y z t N_EVENTS(i)];
     sbootfile = sprintf('%d_%d_%d_%d.slboot',x,y,z,t);
     I_SEL = SLBOOT_TENSOR(:,1) == x & SLBOOT_TENSOR(:,2) == y & SLBOOT_TENSOR(:,3) == z & SLBOOT_TENSOR(:,4) == t;
+    I_BEST = BEST_TENSOR(:,1) == x & BEST_TENSOR(:,2) == y & BEST_TENSOR(:,3) == z & BEST_TENSOR(:,4) == t; 
   end
   
   % Generate .slboot file with single grid set.
@@ -315,6 +318,10 @@ for i=1:size(XY_UNIQUE,1)
     delete(sbootfile);
   end
   fid2 = fopen(sbootfile,'w');
+  % Print best solutions as first lines
+  fprintf(fid2, '%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n', ...
+    [BEST_TENSOR(I_BEST,(3+n_dim_add):end) BEST_TRPL(I_BEST,(3+n_dim_add):end)]');
+  % Print the bootstrap resamplings
   fprintf(fid2, '%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n%1.7f %1.7f %1.7f %1.7f %1.7f %1.7f %1.7f\r\n', ...
     [SLBOOT_TENSOR(I_SEL,(3+n_dim_add):end) SLBOOT_TRPL(I_SEL,(3+n_dim_add):end)]');
   fclose(fid2);  
@@ -332,7 +339,7 @@ for i=1:size(XY_UNIQUE,1)
 end
 fclose(fid3);
 
-% Remove rejected grid elements in SLBOOT_TENSOR and SLBOOT_TRPL.
+% Remove rejected grids from SLBOOT_TENSOR and SLBOOT_TRPL.
 if ~isempty(GRID_REJ)
   for i=1:size(GRID_REJ,1)
     if is_2D
@@ -353,7 +360,7 @@ if ~isempty(GRID_REJ)
   end
 end
 
-% Finally, modify SLBOOT_TENSOR and SLBOOT_PLTL in case of 0D inversion.
+% Modify SLBOOT_TENSOR and SLBOOT_PLTL in case of 0D inversion.
 if single
   I_SEL = SLBOOT_TENSOR(:,1) == 0 & SLBOOT_TENSOR(:,2) == 0;
   SLBOOT_TENSOR = SLBOOT_TENSOR(I_SEL,:);
@@ -365,7 +372,7 @@ SLBOOT_TENSOR = SLBOOT_TENSOR(~I_SEL,:);
 I_SEL = isnan(SLBOOT_TRPL(:,1));
 SLBOOT_TRPL = SLBOOT_TRPL(~I_SEL,:);
 
-% Save the slboot matrixes in the corresponding output files:
+% Save .slboot matrixes in corresponding output files:
 fid7 = fopen([projectname '.slboot_tensor'],'w');
 fid8 = fopen([projectname '.slboot_trpl'],'w');
 switch is_2D
@@ -384,7 +391,7 @@ fclose(fid7);
 fclose(fid8);
 
 
-%==== Final cleanup and creation of summary file =========================
+%==== Creation of output files =========================
 switch is_2D
     case true
         I = GRID(:,3) >= min_events_per_node;
@@ -396,12 +403,7 @@ GRID = GRID(I,:);
 % Take the result from .summary file
 fid4 = fopen(boot_uncertainty,'r');
 
-% if win
-    SUMMARY_TAB = textscan(fid4,'%s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f'); 
-    
-% else
-%     SUMMARY_TAB = textscan(fid4,'%s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f\n'); 
-% end
+SUMMARY_TAB = textscan(fid4,'%s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f'); 
 
 fid5 = fopen([projectname '\' projectname '.summary'],'w');
 fprintf(fid5,'%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n', ...
@@ -417,38 +419,25 @@ end
 fclose(fid4);
 fclose(fid5);
   
-  
-  
-  
-
-  
 % ==================== CLEAN UP AND COPY FILES. ==========================
 delete(sat_output_file);
 delete(grid_uncertainty);
 copyfile(bootstrap_file_temp,[projectname '/']);
 delete([projectname '.summary']);
-%delete([projectname '.sat']);
-%delete([projectname '.summary_ext']);
 movefile([projectname '.summary_ext'],[projectname '/']);
 delete([projectname '.sat.slboot'],[projectname '/' projectname '.sat.slboot']);
 movefile([projectname '.slboot_tensor'],[projectname '/']);
 movefile([projectname '.slboot_trpl'],[projectname '/']);
-if exist(grid_uncertainty,'file')
-    delete(grid_uncertainty);
-end
-if exist(bootstrap_file_temp,'file')
-    delete(bootstrap_file_temp);     
-end
-for i=1:size(XY_UNIQUE,1)
+if exist(grid_uncertainty,'file'); delete(grid_uncertainty); end
+if exist(bootstrap_file_temp,'file'); delete(bootstrap_file_temp); end
+for i=1:size(GRIDS,1)
     sbootfile = sprintf('%d_%d.slboot',x,y); 
     if exist(sbootfile,'file')     
         delete(sbootfile);
     end
 end
 
-
-%==== Creation of OUTPUT structure. ===========================================
- 
+%==== Creation of OUTPUT structure ========================================
 OUT = struct;
 OUT.Damping = damping;
 OUT.DampingCoeff = damping_coeff;
@@ -467,26 +456,27 @@ if single
     OUT.INPUT_TABLE = TABLE(1:dim,:);
     OUT.SUMMARY_TABLE = SUMMARY(1,:);
     OUT.GRID = GRID(1,:);
+    OUT.BEST_TENSOR = BEST_TENSOR(1,:);
+    OUT.BEST_TRPL = BEST_TRPL(1,:);
 else
     OUT.INPUT_TABLE = TABLE;
     OUT.SUMMARY_TABLE = SUMMARY;
     OUT.GRID = GRID;
+    OUT.BEST_TENSOR = BEST_TENSOR;
+    OUT.BEST_TRPL = BEST_TRPL;
 end
- 
-% Save output variables anyway in the directory.
+% Save output structure in the directory.
 save([projectname '/' projectname '_OUT.mat'],'OUT');
- 
 close all;
 
-
-
 %=========================================================================
-%==== Auxiliary functions ================================================
+%================== Auxiliary functions ==================================
 %=========================================================================
 
+%=========================================================================
+% SAVESAT : Save the .sat file
+%=========================================================================
 function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
-
-%try
     fid = fopen(filename, mode);
     if nargin == 7 && strcmp(varargin{1},'nohead')
     else
@@ -522,26 +512,27 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
         end
     end
     fclose(fid);
-   % catch Me
-   % error('Unable to write .SAT file. Aborted.');
-%end
-
-%------------------------------------------------------------------------
-function [str2, dip2, rake2] = define_second_plane(str1,dip1,rake1)
-
-% Routine taken from GMT
-[str2] = computed_strike1(str1,dip1,rake1);
-[dip2] = computed_dip1(str1,dip1,rake1);
-[rake2] = computed_rake1(str1,dip1,rake1);
-
-%-------------------------------------------------------------------------
+%=========================================================================
+% DEFINE_SECOND_PLANE : Compute second nodal plane dip when are given strike, 
+% dip and rake for the first nodal plane with AKI & RICHARD's convention. 
+% Angles are in degrees.
 % Rewritten from C code to MATLAB by PM. 
 % Author: Genevieve Patau
 % Source code: GMT package (http://gmt.soest.hawaii.edu/)
-% Compute second nodal plane dip when are given strike, dip and rake for
-% the first nodal plane with AKI & RICHARD's convention. Angles are in 
-% degrees. 
-%------------------------------------------------------------------------
+%=========================================================================
+function [str2, dip2, rake2] = define_second_plane(str1,dip1,rake1)
+
+[str2] = computed_strike1(str1,dip1,rake1);
+[dip2] = computed_dip1(str1,dip1,rake1);
+[rake2] = computed_rake1(str1,dip1,rake1);
+%=========================================================================
+% COMPUTED_DIP1: Compute rake in the second nodal plane when strike,dip and rake are 
+% given for the first nodal plane with AKI & RICHARD's convention.
+% Angles are in degrees.
+% Rewritten from C code to MATLAB by PM. 
+% Author: Genevieve Patau
+% Source code: GMT package (http://gmt.soest.hawaii.edu/)
+%=========================================================================
 function [dip2] = computed_dip1(str1,dip1,rake1)
    
 str1 = str1 * pi / 180; %#ok<NASGU>
@@ -556,16 +547,14 @@ end
 
 dip2 = (acos(am * sin(rake1) * sin(dip1)));
 dip2 = dip2 * 180/pi;
-
-%-------------------------------------------------------------------------
+%=========================================================================
+% COMPUTED_RAKE1: Compute rake in the second nodal plane when strike,dip and rake are 
+% given for the first nodal plane with AKI & RICHARD's convention.
+% Angles are in degrees.
+% Rewritten from C code to MATLAB by PM. 
 % Author: Genevieve Patau
 % Source code: GMT package (http://gmt.soest.hawaii.edu/)
-% Converted from original C code to MATLAB by PM. 
-%
-% Compute rake in the second nodal plane when strike,dip and rake are 
-% given for the first nodal plane with AKI & RICHARD's convention.
-% Angles are in degrees. */   
-%-------------------------------------------------------------------------
+%=========================================================================
 function [rake2] = computed_rake1(str1,dip1,rake1)
 
 EPSIL = 0.0001; % Tolerance index
@@ -587,7 +576,6 @@ else
 end
 
 sd = sin(dip1); cd = cos(dip1);
-%sd2 = sin(dip2);
 cd2 = cos(dip2);
 ss = sin(str1 - str2); cs = cos(str1 - str2);
 
@@ -597,18 +585,15 @@ else
   sinrake2 = -am * sd * cs / cd2;  		% cd2 [cos(DIP2)] must be used not cd [cos(DIP1)] */
 end
 rake2 = atan2(sinrake2, -am * sd * ss);
-
 rake2 = rake2 * 180/pi;
-
-%-------------------------------------------------------------------------
+%=========================================================================
+% COMPUTED_STRIKE1: Compute strike in the second nodal plane when strike,dip and rake are 
+% given for the first nodal plane with AKI & RICHARD's convention.
+% Angles are in degrees.
+% Rewritten from C code to MATLAB by PM. 
 % Author: Genevieve Patau
 % Source code: GMT package (http://gmt.soest.hawaii.edu/)
-% Converted from original C code to MATLAB by PM. 
-%
-% Compute the strike of the decond nodal plane when are given strike, dip 
-% and rake for the first nodal plane with AKI & RICHARD's convention. 
-% Angles are in degrees. */
-%-------------------------------------------------------------------------
+%=========================================================================
 function [str2] = computed_strike1(str1,dip1,rake1)
   
   EPSIL = 0.0001; % Tolerance index
@@ -643,29 +628,20 @@ function [str2] = computed_strike1(str1,dip1,rake1)
   end
   
   str2 = str2 * 180 / pi; 
-
-%-------------------------------------------------------------------------
-% Author: Genevieve Patau
-% Source code: GMT package (http://gmt.soest.hawaii.edu/)
-% Converted from original C code to MATLAB by PM. 
-%
-%-------------------------------------------------------------------------  
+%=========================================================================
+% ZERO_TWOPI
+%=========================================================================
 function [str] = zero_twopi(str)
   if str >= 2 * pi
     str = str - 2 * pi;
   elseif str < 0
     str =str + 2 * pi;
   end
-        
-%-------------------------------------------------------------------------
+%=========================================================================
+% DC2AXES: Convert strike/dip/rake into P/T axes directions.
 % Source code: GMT package PSMECA (http://gmt.soest.hawaii.edu/)
 % Converted from original C code to MATLAB by PM. 
-%
-% dc2axes Convert strike/dip/rake into P/T axes directions.
-% 04.09.2012 Taken from GMT software, seem to work...
-% 05.09.2012 Make it work with only one nodal plane and calculating the
-% other parameters
-%-------------------------------------------------------------------------
+%=========================================================================        
 function [TS,TD,PS,PD] = dc2axes(S1,D1,R1)
 
 [S2, D2, R2] = define_second_plane(S1,D1,R1);
@@ -746,38 +722,34 @@ else
   PS = PS * 180/pi;
   PD = PD * 180/pi;
 end
-
-%-------------------------------------------------------------------------
-%------------------------------------------------------------------------
+%=========================================================================
+% PLOTAXES: Plot the P and T axes of the given focal mechanisms.
+%=========================================================================  
 function plotaxes(TABLE,projectname,caption,is_2D,single)
-
-% Get n° different grids
 switch is_2D
     case true
         switch single
             case false
-             XY_UNIQUE = unique(TABLE(:,1:2), 'rows');
+             GRIDS = unique(TABLE(:,1:2), 'rows');
             case true
-             XY_UNIQUE = [0,0];
+             GRIDS = [0,0];
         end
     case false
-        % No need to include single case since it would give an error in
-        % savesat.
-        XY_UNIQUE = unique(TABLE(:,1:4), 'rows');
+        GRIDS = unique(TABLE(:,1:4), 'rows');
 end
 
-for i = 1:size(XY_UNIQUE,1)
+for i = 1:size(GRIDS,1)
     
-    x = XY_UNIQUE(i,1);
-    y = XY_UNIQUE(i,2);
+    x = GRIDS(i,1);
+    y = GRIDS(i,2);
     
     switch is_2D
         case true
             I = TABLE(:,1) == x & TABLE(:,2) == y;
             n = 0;
         case false
-            z = XY_UNIQUE(i,3);
-            t = XY_UNIQUE(i,4);
+            z = GRIDS(i,3);
+            t = GRIDS(i,4);
             I = TABLE(:,1) == x & TABLE(:,2) == y & TABLE(:,3) == z & TABLE(:,4) == t;
             n = 2;
     end
@@ -846,15 +818,12 @@ for i = 1:size(XY_UNIQUE,1)
     end
     print('-r300','-dpng',fileout);
 end
-
-
-%------------------------------------------------------------------------
-% Project according to Schmidt projection (lower hemisphere). Points with 
+%=========================================================================
+% PROJECT: Project according to Schmidt projection (lower hemisphere). Points with 
 % Takeoff angles > 90 deg are reverted. 
 % Attention!! AZM and TKO are only mathematically, not always have physical
 % meaning except for case of polarities!!
-%------------------------------------------------------------------------
-
+%=========================================================================  
 function [X,Y,R] = project(AZM,TKO)
 
   TKO = pi/2 - TKO; % Plunge is calculated in same way as stresses
@@ -864,10 +833,9 @@ function [X,Y,R] = project(AZM,TKO)
   R = sqrt(2)*sin(TKO/2);   % schmidt radius    
   X = R.*sin(AZM);
   Y = R.*cos(AZM);
-
-%-------------------------------------------------------------------------
-% Calculate optimal damping parameter.
-%------------------------------------------------------------------------
+%=========================================================================
+% TRADEOFF: Calculate optimal damping parameter.
+%=========================================================================  
 function [damping, status, result] = tradeoff(projectname, caption, is_2D, ts_damp_ratio,exe_tradeoff)
 
 damp_parameters = [0.4, 0.6, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.5, 4, 5, 6];
@@ -922,6 +890,107 @@ ylabel('Model length');
 title({'Trade-off curve',caption});
 print('-dpng','-r300',[projectname '/' projectname '_tradeoff.png']);
 close all;
+%=========================================================================
+% BEST_TENSOR: Reads output file with the best stress tensor solutions
+%=========================================================================
+function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
+
+fid = fopen([projectname '\' projectname '.out']);
+tline = fgetl(fid);
+if is_2D   % make it only str for fscanf
+    BEST_TENSOR = zeros(size(GRIDS,1),8);
+    k = 1;
+    while ischar(tline)      % While we have string lines...
+        if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 27
+            % Headers of the file
+        elseif length(tline) == 67
+            % fscanf think about
+            xb = str2double(strtrim(tline(1:3)));
+            yb = str2double(strtrim(tline(5:7)));
+            see = str2double(strtrim(tline(9:17)));
+            sen = str2double(strtrim(tline(19:27)));
+            seu = str2double(strtrim(tline(29:37)));
+            snn = str2double(strtrim(tline(39:47)));
+            snu = str2double(strtrim(tline(49:57)));
+            suu = str2double(strtrim(tline(59:67)));
+            
+            BEST_TENSOR(k,:) = [xb yb see sen seu snn snu suu];
+            k = k + 1;
+            if k > size(GRIDS,1)
+                break
+            end
+        end
+        tline = fgetl(fid);
+    end
+else
+   BEST_TENSOR = zeros(size(GRIDS,1),10);
+    k = 1;
+    while ischar(tline)      % While we have string lines...
+        if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 31
+            % Headers of the file
+        elseif length(tline) == 75
+            xb = str2double(strtrim(tline(1:3)));
+            yb = str2double(strtrim(tline(5:7)));
+            zb = str2double(strtrim(tline(9:11)));
+            tb = str2double(strtrim(tline(13:15)));
+            see = str2double(strtrim(tline(17:25)));
+            sen = str2double(strtrim(tline(27:35)));
+            seu = str2double(strtrim(tline(37:45)));
+            snn = str2double(strtrim(tline(47:55)));
+            snu = str2double(strtrim(tline(57:65)));
+            suu = str2double(strtrim(tline(67:75)));
+            
+            BEST_TENSOR(k,:) = [xb yb zb tb see sen seu snn snu suu];
+            k = k + 1;
+            if k > size(GRIDS,1)
+                break
+            end
+        end
+        tline = fgetl(fid);
+    end
+end
+fclose(fid);
+%=========================================================================
+% BEST_TRPL: Calculate trend and plunges of the best solution stress tensors
+%=========================================================================
+function BEST_TRPL = get_trpl(BEST_TENSOR,is_2D)
+% Select one stress tensor for each grid
+if is_2D
+    I =0;
+else
+    I = 2;
+end    
+BEST_TRPL = zeros(size(BEST_TENSOR,1),9+I);
+for i = 1:size(BEST_TENSOR,1)
+    STRESS_LINE = BEST_TENSOR(i,3+I:end);
+    STRESS = [STRESS_LINE(1) STRESS_LINE(2) STRESS_LINE(3); ...
+        STRESS_LINE(2) STRESS_LINE(4) STRESS_LINE(5); ...
+        STRESS_LINE(3) STRESS_LINE(5) STRESS_LINE(6)];
+    
+    % Calculate eigenvalues and phi
+    [VECS,D] = eig(STRESS);
+    LAM = diag(D);
+    [LAM,IX] = sort(LAM); % Sort from smaller to largest, since tension >0 in SATSI
+    VECS = VECS(:,IX);
+    phi = (LAM(2) - LAM(3))/(LAM(1) - LAM(3));
+    % Define trend and plunge of each eigenvector
+    E = VECS(1,:); N = VECS(2,:); U = VECS(3,:);
+    Z = sqrt(E.^2 + N.^2);
+    PPLG = atan2(-U,Z) * 180/pi;
+    for j = 1:3
+        if PPLG(j) < 0
+            PPLG(j) = -1*PPLG(j);
+            E(j) = -1*E(j);
+            N(j) = -1*N(j);
+        end
+    end
+    PDIR = atan2(E,N) * 180/pi;
+    
+    BEST_TRPL(i,:) = [BEST_TENSOR(i,1:2+I)...
+        phi PDIR(1) PPLG(1) PDIR(2) PPLG(2) PDIR(3) PPLG(3)];
+end
+
+
 
 
 
