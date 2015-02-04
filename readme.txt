@@ -1,5 +1,5 @@
 MSATSI - MATLAB package for stress inversion from focal mechanisms
-Version 1.0.7, Last update: 01.06.2014
+Version 1.0.8, Last update: 04.02.2015
 
 Authors:
 
