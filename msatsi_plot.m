@@ -35,10 +35,11 @@ function [Hs, Hr] = msatsi_plot(projectname, type, varargin)
 
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.8 $  $Date: 2014.09.01 $
+%   $Revision: 1.0.8 $  $Date: 2015.02.04 $
 
 %   Development info:
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
+%           Correction to the best solution of satsi2d.
 
 global scale_factor;
 global stereo_projection;
