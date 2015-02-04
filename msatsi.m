@@ -67,7 +67,7 @@ else
   Z = TABLE(:,3);
   T = TABLE(:,4);
 end
-
+ 
 % Determine platform (Windows / Linux is supported)
 archstr = computer('arch');
 if strcmp(archstr,'win32') || strcmp(archstr,'win64')
@@ -161,8 +161,6 @@ else
     return;
   end
 end
-sat_input_file = [projectname '.sat']; % Satsi input
-
 switch is_2D
   case true
     ap = [];
@@ -170,15 +168,16 @@ switch is_2D
     ap = [Z T];
 end
 
-savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION1 DIP_ANGLE1 RAKE1],is_2D,single);
 caption = [p.Results.Caption ' (' projectname ') '];
 
 % ===========Addition of Vaclav Routine STARTS HERE =====================
 
 %---Perform initial stress inversion using random fault planes---
 % To be implemented: N° of realizations
+sat_input_file_0 = [projectname '_0.sat']; % Satsi input
+savesat2(projectname,sat_input_file_0, 'w', comment,[X Y ap DIP_DIRECTION1 DIP_ANGLE1 RAKE1],is_2D,single);
 sat_out_file_0 = [projectname '/' projectname '_0.out'];
-satsi_cmstr = [sat_input_file ' ' sat_out_file_0 ' ' num2str(0)];
+satsi_cmstr = [sat_input_file_0 ' ' sat_out_file_0 ' ' num2str(0)];
 
 disp(['Executing ' upper(exe_satsi) 'for initial solution']);
 switch is_2D
@@ -188,23 +187,26 @@ end
 disp(command); [status] = system(command);
 disp(['Exit status = ' num2str(status) ]);
 ini = true;
-BEST_TENSOR_0 = read_out(projectname,GRIDS,is_2D,ini);
+BEST_INI = read_out(projectname,GRIDS,is_2D,ini);
 ini = false;
-
+STR_INI = STRIKE1; DIP_ANGLE_INI = DIP_ANGLE1; RAKE_INI = RAKE1;
 %------------ Loop over different friction coefficients ---------------
-MEAN_INST = NaN .* ones(size(BEST_TENSOR_0,1),length(FRICTION));
+MEAN_INST = nan(size(BEST_INI,1),length(FRICTION));
+CONVERGENCE = nan(N_iter,length(FRICTION));
 for i_fric = 1: length(FRICTION)
     fric = FRICTION(i_fric);
+    BEST_TENSOR_0 = BEST_INI;
+    STRIKE1 = STR_INI; DIP_ANGLE1 = DIP_ANGLE_INI; RAKE1 = RAKE_INI;
     %---------- Loop over different iterations ----------
-    CONVERGENCE = zeros(N_iter,1);
     for i_iter = 1:N_iter
         [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,fric,X,Y,...
             STRIKE1,DIP_ANGLE1,RAKE1);
-        STRIKE = round(STRIKE); DIP_ANGLE = round(DIP_ANGLE); RAKE = round(RAKE);
         DIP_DIRECTION = STRIKE + 90;
+        DIP_DIRECTION(DIP_DIRECTION >= 360) = DIP_DIRECTION(DIP_DIRECTION >= 360) - 360;
         % Perform the stress inversion still without damping
-        savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
-        sat_out_file = [projectname '/' projectname '.out'];
+        sat_input_file = [projectname num2str(i_iter) '.sat'];
+        sat_out_file = [projectname '/' projectname num2str(i_iter) '.out'];
+        savesat2(projectname,sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
         satsi_cmstr = [sat_input_file ' ' sat_out_file ' ' num2str(0)];
         disp(['Executing ' upper(exe_satsi) 'for initial solution']);
         switch is_2D
@@ -213,11 +215,11 @@ for i_fric = 1: length(FRICTION)
         end
         disp(command); [status] = system(command);
         disp(['Exit status = ' num2str(status) ]);
-        BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
+        BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini,i_iter);
         I_CON = (STRIKE - STRIKE1) ~= 0;
-        CONVERGENCE(i_iter) = sum(I_CON);
+        CONVERGENCE(i_iter,i_fric) = sum(I_CON);
         BEST_TENSOR_0 = BEST_TENSOR;
-        STRIKE1 = STRIKE; DIP_ANGLE1 = DIP_ANGLE; RAKE1 = RAKE; % Actually not done in Vaclav's
+        STRIKE1 = STRIKE; DIP_ANGLE1 = DIP_ANGLE; RAKE1 = RAKE; % Not done in Vaclav's, but should not matter
     end
     for j = 1:size(BEST_TENSOR,1)
         x = BEST_TENSOR(j,1); y = BEST_TENSOR(j,2);
@@ -226,14 +228,14 @@ for i_fric = 1: length(FRICTION)
     end
 end
 [INST_MAX,i_index] = max(MEAN_INST,[],2);
-OPT_FRIC = friction(i_index);
+OPT_FRIC = FRICTION(i_index);
 %----- Final stress inversions and stability criteria with optimun friction ---------------
 for i_iter = 1:N_iter
     [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
         STRIKE1,DIP_ANGLE1,RAKE1);
     DIP_DIRECTION = STRIKE + 90;
     % Perform the stress inversion still without damping
-    savesat(sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
+    savesat2(projectname,sat_input_file,'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
     sat_out_file = [projectname '/' projectname '.out'];
     satsi_cmstr = [sat_input_file ' ' sat_out_file ' ' num2str(0)];
     disp(['Executing ' upper(exe_satsi) 'for initial solution']);
@@ -580,11 +582,10 @@ close all;
 %=========================================================================
 %==== Auxiliary functions ================================================
 %=========================================================================
-
-function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
+function savesat2(folder,filename, mode, comment, TABLE,is_2D,single,varargin)
 
     fid = fopen(filename, mode);
-    if nargin == 7 && strcmp(varargin{1},'nohead')
+    if nargin == 8 && strcmp(varargin{1},'nohead')
     else
         fprintf(fid,'%s\n', comment);
     end
@@ -593,14 +594,14 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
         switch single
             case false
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
-                folder = filename(1:end-4);
+              %folder = filename(1:end-4);
                 fid2 = fopen([folder '\' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE');
                 fclose(fid2);
             case true
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
                 dim = size(TABLE,1)/2;  
-                folder = filename(1:end-4);
+               % folder = filename(1:end-4);
                 fid2 = fopen([folder '\' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE(1:dim,:)');
                 fclose(fid2);
@@ -618,7 +619,6 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
         end
     end
     fclose(fid);
-
 %------------------------------------------------------------------------
 function [str2, dip2, rake2] = define_second_plane(str1,dip1,rake1)
 
@@ -1018,16 +1018,16 @@ close all;
 %------------------------------------------------------------------------
 % Read output file with the best stress tensor solutions
 %------------------------------------------------------------------------
-function BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini)
+function BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini,i_iter)
 
 if ini == true
     fid = fopen([projectname '\' projectname '_0.out']);
 else
-    fid = fopen([projectname '\' projectname '.out']);
+    fid = fopen([projectname '\' projectname num2str(i_iter) '.out']);
 end
 tline = fgetl(fid);
 if is_2D
-    BEST_TENSOR = zeros(size(GRIDS,1),8);
+    BEST_TENSOR = zeros(size(GRIDS,1),8); % nan
     k = 1;
     while ischar(tline)      % While we have string lines...
         if length(tline) <= 2 | length(tline) == 30 | length(tline) == 19 | length(tline) == 27
@@ -1138,7 +1138,7 @@ STRIKE2(STRIKE2>=360) = STRIKE2(STRIKE2>=360) - 360;
 STRIKE = zeros(size(STRIKE1));
 DIP_ANGLE = zeros(size(STRIKE1));
 RAKE = zeros(size(STRIKE1));
-INST = zeros(size(STRIKE1));
+INST = nan(size(STRIKE1));
 
 TAU = [BEST_TENSOR(:,3) BEST_TENSOR(:,4) BEST_TENSOR(:,5)...
     BEST_TENSOR(:,4) BEST_TENSOR(:,6) BEST_TENSOR(:,7) ...
@@ -1223,10 +1223,9 @@ for i = 1: size(BEST_TENSOR,1) % Loop over each separate stress state:
     %--------------------------------------------------------------------------
     % identification of the fault according to the instability criterion
     %--------------------------------------------------------------------------
-    STRIKE(I) = (i_index'-1).*STR2_T+(2-i_index').*STR1_T;
-    DIP_ANGLE(I)    = (i_index'-1).*DIP2_T   +(2-i_index').*DIP1_T;
-    RAKE(I)   = (i_index'-1).*RAK2_T  +(2-i_index').*RAK1_T;
-    
+    STRIKE(I)    = round((i_index'-1).*STR2_T + (2-i_index').*STR1_T);
+    DIP_ANGLE(I) = round((i_index'-1).*DIP2_T +(2-i_index').*DIP1_T);
+    RAKE(I)      = round((i_index'-1).*RAK2_T +(2-i_index').*RAK1_T);
 end
 
 
