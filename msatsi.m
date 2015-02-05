@@ -29,7 +29,7 @@ p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
 p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction',[0.6:0.1:0.9], @(x) isvector(x) && x > 0);
+p.addParamValue('Friction',[0.2:0.05:0.9], @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -233,8 +233,8 @@ OPT_FRIC = FRICTION(i_index);
 BEST_TENSOR_0 = BEST_INI; STRIKE1 = STR_INI; DIP_ANGLE1 = DIP_ANGLE_INI; RAKE1 = RAKE_INI;
 CONVERGENCE_OPT = nan(N_iter,1);
 for i_iter = 1:N_iter
-    [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
-        STRIKE1,DIP_ANGLE1,RAKE1);
+     [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
+         STRIKE1,DIP_ANGLE1,RAKE1);
     DIP_DIRECTION = STRIKE + 90;
     DIP_DIRECTION(DIP_DIRECTION >= 360) = DIP_DIRECTION(DIP_DIRECTION >= 360) - 360;
     % Perform the stress inversion still without damping
