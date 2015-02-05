@@ -29,7 +29,7 @@ p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
 p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction',0.6, @(x) isvector(x) && x > 0);
+p.addParamValue('Friction',[0.6:0.1:0.9], @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -230,13 +230,17 @@ end
 [INST_MAX,i_index] = max(MEAN_INST,[],2);
 OPT_FRIC = FRICTION(i_index);
 %----- Final stress inversions and stability criteria with optimun friction ---------------
+BEST_TENSOR_0 = BEST_INI; STRIKE1 = STR_INI; DIP_ANGLE1 = DIP_ANGLE_INI; RAKE1 = RAKE_INI;
+CONVERGENCE_OPT = nan(N_iter,1);
 for i_iter = 1:N_iter
     [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,OPT_FRIC,X,Y,...
         STRIKE1,DIP_ANGLE1,RAKE1);
     DIP_DIRECTION = STRIKE + 90;
+    DIP_DIRECTION(DIP_DIRECTION >= 360) = DIP_DIRECTION(DIP_DIRECTION >= 360) - 360;
     % Perform the stress inversion still without damping
+    sat_input_file = [projectname num2str(i_iter) '.sat'];
     savesat2(projectname,sat_input_file,'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
-    sat_out_file = [projectname '/' projectname '.out'];
+    sat_out_file = [projectname '/' projectname num2str(i_iter) '.out'];
     satsi_cmstr = [sat_input_file ' ' sat_out_file ' ' num2str(0)];
     disp(['Executing ' upper(exe_satsi) 'for initial solution']);
     switch is_2D
@@ -246,16 +250,16 @@ for i_iter = 1:N_iter
     disp(command);
     [status] = system(command);
     disp(['Exit status = ' num2str(status) ]);
-    BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini);
-    NORM_CONVERGENCE(i_iter) = norm(BEST_TENSOR(:,3:end) - BEST_TENSOR_0(:,3:end));
+    BEST_TENSOR = read_out(projectname,GRIDS,is_2D,ini,i_iter);
+    I_COPT = (STRIKE - STRIKE1) ~= 0;
+    CONVERGENCE_OPT(i_iter) = sum(I_COPT);
     BEST_TENSOR_0 = BEST_TENSOR;
+    STRIKE1 = STRIKE; DIP_ANGLE1 = DIP_ANGLE; RAKE1 = RAKE; % Not done in Vaclav's, but should not matter
 end
 
-if is_2D
-    TABLE = round([X Y DIP_DIRECTION DIP_ANGLE RAKE]);
-else
-    TABLE = round([X Y Z T DIP_DIRECTION DIP_ANGLE RAKE]);
-end
+% Record the new initial TABLE with real fault planes
+TABLE = round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE]);
+
 sat_input_file = [projectname '.sat'];
 savesat2(projectname,sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
 
