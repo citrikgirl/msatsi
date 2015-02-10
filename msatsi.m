@@ -37,7 +37,7 @@ p.addParamValue('Caption', '', @(x) ischar(x));
 p.addParamValue('TimeSpaceDampingRatio', 1, @(x) isnumeric(x));
 p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
-p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
+p.addParamValue('N_stab_iterations',3, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
 p.addParamValue('Friction',[0.2:0.05:0.9], @(x) isvector(x) && x > 0);
 
@@ -569,6 +569,7 @@ OUT.PTPlot = PT;
 OUT.SLBOOT_TENSOR = SLBOOT_TENSOR;
 OUT.SLBOOT_TRPL = SLBOOT_TRPL;
 OUT.BOOTST_EXT = load([projectname '/' projectname '.summary_ext']);
+OUT.FRIC = OPT_FRIC;
 if single
     dim = size(TABLE,1)/2;  
     OUT.INPUT_TABLE = TABLE(1:dim,:);
