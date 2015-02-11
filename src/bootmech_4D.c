@@ -1,9 +1,34 @@
+//-------------------------------------------------------------------------------------------------
+// BOOTMECH_4D
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code updated to C99 standard. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 /* a program to run the bootstrap operation for satsi */
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXDATA 7000
+// [GK 2013.05.15] Original satsi setup.
+//#define MAXDATA 7000
+// [GK 2013.05.15] Standard version.
+#define MAXDATA 70000
 
-main(argc, argv)
+// [GK 2013.03.03] Additional function declarations to suppress warning messages.
+int slfast_4D(char name_in[], int x[], int y[], int dep[], int time[],
+    float dipf[], float ddirf[], float rakef[], int nobs_t, float cwt,
+    float twt);
+void switcher(float ddir1, float dip1, float rake1, float *ddir2, float *dip2,
+    float *rake2);
+
+int main(argc, argv)
   int argc;char **argv; {
   float *dip1, *ddir1, *rake1, *dip2, *ddir2, *rake2; /* focal mechanism data, input + auxiliary plane */
   float *dipf, *ddirf, *rakef; /* focal mechanism data, for inversion */
@@ -14,8 +39,9 @@ main(argc, argv)
   int nobs, ntries; /* number of observations, number bootstrap trials */
   double cwt, twt; /* damping parameter, time/space damping ratio */
   FILE *fpin; /* input file pointer */
-  char name[20], headline[200]; /* character line */
-  int n, i, j, k; /* dummy variables */
+  char name[40], headline[200]; /* character line */
+  int n, i, j; /* dummy variables */
+  int returnvalue = 0; /* [PM 11.04.2013] Added for consistency with 2D version*/
 
   rand = seed();
 
@@ -38,10 +64,13 @@ main(argc, argv)
   nt = (int *) malloc(MAXDATA * sizeof(int));
 
   /* read in data */
-  if (argc != 6) {
+  //--argc; // [PM 11.04.2013] Added for consistency with other programs.
+  //++argv;
+  if (argc != 6) // [GK 16.06.2013] Reverted due to crash.
+      {
     fprintf(stderr,
-        "usage: bootmech_4D file ntries frac damping time/space_damping\n");
-    return;
+        "usage: bootmech_4D.exe file ntries frac damping time/space_damping\n");
+    return -6001; // [PM 11.04.2013] changed from -1 to -6001.
   }
 
   ++argv;
@@ -54,11 +83,16 @@ main(argc, argv)
   sscanf(*argv, "%lf", &cwt);
   ++argv;
   sscanf(*argv, "%lf", &twt);
+  printf("%s\r\n", name);
+  printf("%d\r\n", ntries);
+  printf("%f\r\n", frac);
+  printf("%lf\r\n", cwt);
+  printf("%lf\r\n", twt);
 
   fpin = fopen(name, "r");
   if (fpin == NULL) {
     fprintf(stderr, "unable to open %s.\n", name);
-    return;
+    return -6002; /* [PM 11.04.2013] changed from -2 to -6002*/
   }
 
   fgets(headline, 200, fpin);
@@ -110,7 +144,10 @@ main(argc, argv)
       if (rakef[n] < 0) rakef[n] += 360;
     }
     printf("%d\n", i);
-    slfast_4D(name, nx, ny, nz, nt, dipf, ddirf, rakef, nobs, cwt, twt);
+    returnvalue = slfast_4D(name, nx, ny, nz, nt, dipf, ddirf, rakef, nobs, cwt,
+        twt); /* [PM 11.04.2013]: Added for consistency with 2D version. */
+    if (returnvalue < 0) break;
+
     printf("%d\n", i);
   }
   fclose(fpin);
@@ -128,4 +165,6 @@ main(argc, argv)
   free(ny);
   free(nz);
   free(nt);
+
+  return returnvalue; // [PM 11.04.2013]: Added for consistency with 2D version.
 }

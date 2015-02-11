@@ -1,3 +1,18 @@
+//-------------------------------------------------------------------------------------------------
+// SATSIFAST_4D
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code not modified. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -173,7 +188,7 @@ main(argc, argv)
     ++nobs;
     /* check to see if all possible data has been read */
     if (nobs == MAXDATA) {
-      fprintf(fpout, "NOT ALL DATA COULD BE READ.\n");
+      printf("NOT ALL DATA COULD BE READ.\n");
       break;
     }
   } /* end of data read loop */
@@ -411,17 +426,17 @@ main(argc, argv)
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt * twt;
+                  diag_sa[j + i] = twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt * twt;
+                  d_sa[index] = twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt * twt;
+                  diag_sa[j + i] = -twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt * twt;
+                  d_sa[index] = -twt;
                   index++;
                 }
               }

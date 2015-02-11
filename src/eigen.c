@@ -1,5 +1,7 @@
 #include <math.h>
-eigen(a, lam, q)
+#define sub(I,J) (J+I*m)
+//void eigen(double a[3][3], double lam[3], double q[3][3])
+void eigen(a, lam, q)
   /* subroutine to find eigen values and */
   /* and eigenvectors of a 3 by 3 matrix */
   /* at end eigenvalues are in lam and   */
@@ -99,13 +101,12 @@ eigen(a, lam, q)
   }
 
 }
-#include <math.h>
-eigvec(a, m, x, b)
+
+void eigvec(a, m, x, b)
   /* solves ax=b for x by gaussian elimination */
   /* set up expecially for eigenvectors (i.e.  */
   /* for singular matrices)                    */
 
-#define sub(I,J) (J+I*m)
   short m;double a[]; /* a square matrix of size m */
   double b[]; /* a vector of length m */
   double x[]; /* a vector of length m */
@@ -187,3 +188,4 @@ eigvec(a, m, x, b)
 
   return;
 }
+

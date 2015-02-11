@@ -1,6 +1,5 @@
-sort(x, n)
-  float x[];int n; {
-  int i, j, k;
+void sort(float x[], int n) {
+  int i;
   double hold;
   int flag;
 

@@ -1,11 +1,12 @@
 /* to find ddir, dip, rake of other plane given same of first */
 #include <math.h>
+
 #define TODEG 57.29577951
-switcher(ddir1, dip1, rake1, ddir2, dip2, rake2)
-  float ddir1, dip1, rake1;float *ddir2, *dip2, *rake2; {
-  double z, z2, z3, s1, s2, s3, lam0, lam1;
-  double n1, n2, n3, h1, h2;
-  int j;
+
+void switcher(float ddir1, float dip1, float rake1, float *ddir2, float *dip2,
+    float *rake2) {
+  double z, z2, z3, s1, s2, s3;
+  double n1, n2, h1, h2;
 
   z = ddir1 / TODEG;
   if (dip1 == 90) dip1 = 89.99999;
@@ -17,7 +18,7 @@ switcher(ddir1, dip1, rake1, ddir2, dip2, rake2)
   s3 = sin(z3) * sin(z2);
   n1 = sin(z) * sin(z2); /* normal vector to plane 1 */
   n2 = cos(z) * sin(z2);
-  n3 = cos(z2);
+  //n3 = cos(z2);
   h1 = -s2; /* strike vector of plane 2 */
   h2 = s1;
   /* note h3=0 always so we leave it out */
@@ -29,13 +30,14 @@ switcher(ddir1, dip1, rake1, ddir2, dip2, rake2)
   z = h1 * n1 + h2 * n2;
   z /= sqrt(h1 * h1 + h2 * h2);
   z = acos(z);
+  //return;
   if (s3 >= 0)
-    *rake2 = z * TODEG;
+    *rake2 = (z * TODEG);
   else
-    *rake2 = -z * TODEG;
+    *rake2 = (-z * TODEG);
 }
 
-ranger(z)
+void ranger(z)
   float *z;
 /* makes z in 0 to 360 */
 {

@@ -1,16 +1,44 @@
+//-------------------------------------------------------------------------------------------------
+// SATSI_2D_TRADEOFF
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code updated to C99 standard. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define TODEG 57.29577951
-#define MAXDATA 7000
-#define MAXX 56
-#define MAXY 56
-#define MAXBOX 900
-#define SRMAXBOX 30
+/* [GK 2013.05.15] Original SATSI setup.
+ #define MAXDATA 7000
+ #define MAXX 56
+ #define MAXY 56
+ #define MAXBOX 900
+ #define SRMAXBOX 30
+ */
+// [GK 2013.05.15] Extended SATSI setup.
+#define MAXDATA 70000
+#define MAXX 200
+#define MAXY 200
+#define MAXBOX 10000
+#define SRMAXBOX 100
 
 /* COORDINATES ARE EAST,NORTH,UP */
 
-main(argc, argv)
+// [GK 2013.03.03] Additional declarations to suppress warning messages;
+void sprsax(double sa[], int ija[], double x[], double b[], int m, int n);
+void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
+    int n, int p, double x[], double b[]);
+
+int main(argc, argv)
   /* slickenside inversion program */
   int argc; /* argument count */
   char **argv; /* argument string */
@@ -25,7 +53,7 @@ main(argc, argv)
   double stress[5 * MAXBOX]; /* stress tensor in vector form xx,xy,xz,yy,yz,zz */
   double *slick; /* slickenside vector elements vector */
   double n1, n2, n3; /* normal vector elements */
-  double norm[MAXDATA][3]; /* storage of n1,n2,n3 */
+  //double norm[MAXDATA][3]; /* storage of n1,n2,n3 */
   double mech_misfit, mvar; /* mechanism misfit, model variance */
   double *stress_len; /* stress field model length (vector) */
   double *slick_pre; /* predicted slip vector */
@@ -55,20 +83,21 @@ main(argc, argv)
   /* get file pointers */
   --argc;
   ++argv;
-  if (argc < 3) {
-    printf("usage: satsi_2D_tradeoff data_file output_file damping\n");
-    return;
+  if (argc != 3) /* [PM 11.04.2013] changed from < to != */
+  {
+    printf("usage: satsi_2D_tradeoff.exe data_file output_file damping\n");
+    return -1001; /*  [PM 11.04.2013] changing from -1 to -1001 */
   }
   fpin = fopen(*argv, "r");
   if (fpin == NULL) {
     printf("unable to open %s.\n", *argv);
-    return;
+    return -1002; /*  [PM] changing of code */
   }
   ++argv;
   fpout = fopen(*argv, "a");
   if (fpout == NULL) {
     printf("unable to open %s.\n", *argv);
-    return;
+    return -1003; /*  [PM] changing of code */
   }
   ++argv;
   sscanf(*argv, "%lf", &cwt);
@@ -98,9 +127,10 @@ main(argc, argv)
     n2 = cos(z) * sin(z2);
     n3 = cos(z2);
 
-    norm[nobs][0] = n1;
-    norm[nobs][1] = n2;
-    norm[nobs][2] = n3;
+    // [GK 2013.03.08] Removed as not used in program.
+    //norm[nobs][0] = n1;
+    //norm[nobs][1] = n2;
+    //norm[nobs][2] = n3;
 
     /* slickenside vector calculation */
     slick[j] = -cos(z3) * cos(z) - sin(z3) * sin(z) * cos(z2);
@@ -329,4 +359,5 @@ main(argc, argv)
   free(slick_pre);
   free(loclist);
 
+  return 0; // [GK 2013.03.03] Added default return value;
 }

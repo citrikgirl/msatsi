@@ -1,18 +1,46 @@
+//-------------------------------------------------------------------------------------------------
+// SLFAST_2D
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code updated to C99 standard. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define TODEG 57.29577951
+/* [GK 2013.05.15] Original SATSI setup.
 #define MAXDATA 7000
 #define MAXX 56
 #define MAXY 56
 #define MAXBOX 900
 #define SRMAXBOX 30
+*/
+// [GK 2013.05.15] Extended SATSI setup.
+#define MAXDATA 70000
+#define MAXX 200
+#define MAXY 200
+#define MAXBOX 10000
+#define SRMAXBOX 100
 /* COORDINATES ARE EAST,NORTH,UP */
 
+// [GK 2013.03.03] Additional declarations to suppress warning messages.
+void dirplg(double e, double n, double u, double *pdir, double *pplg);
+void eigen(double a[3][3], double lam[3], double q[3][3]);
+void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
+    int n, int p, double x[], double b[]);
+
 /*slfast(name_in) slickenside inversion program */
-slfast_2D(name_in, nx_in, ny_in, dipf, ddirf, rakef, nobs_t, cwt)
-  char name_in[]; /* name of file */
-  int nx_in[], ny_in[];float dipf[], ddirf[], rakef[];int nobs_t;float cwt; {
+int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
+    float ddirf[], float rakef[], int nobs_t, float cwt) {
   int x, y; /* focal mechanism bins */
   int nobs, nloc, nrows, nlocfill; /* number of observations, bins, rows */
   double *diag_sa, *amat_sa, *d_sa; /* inversion matrices in sparse matrix, */
@@ -26,7 +54,7 @@ slfast_2D(name_in, nx_in, ny_in, dipf, ddirf, rakef, nobs_t, cwt)
   double vecs[3][3]; /* eigenvectors */
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
-  char name[20]; /* output file name */
+  char name[40]; /* output file name */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, m, n, p; /* dummy variables */
   double z, z2, z3, temp[5]; /* more dummy variables */
@@ -48,7 +76,7 @@ slfast_2D(name_in, nx_in, ny_in, dipf, ddirf, rakef, nobs_t, cwt)
   fpout = fopen(name, "a");
   if (fpout == NULL) {
     printf("unable to open %s.\n", name);
-    return;
+    return -7001 /* 11.04.2013 PM: From -1 to -7001*/;
   }
 
   for (i = 0; i < 3 * MAXDATA; i++)
@@ -334,4 +362,6 @@ slfast_2D(name_in, nx_in, ny_in, dipf, ddirf, rakef, nobs_t, cwt)
   free(loclist);
 
   fclose(fpout);
+
+  return 0;
 }

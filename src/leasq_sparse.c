@@ -4,8 +4,9 @@
 
 #define EPS 1.0e-14
 #define sub(I,J) (J+I*mp)
+#define SWAP(a,b) itempri=(a);(a)=(b);(b)=itempri;
 
-leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
+void leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
   /* finds the least squares solution of ax=b with damping matrix d */
   int a_ija[]; /* the coefficients matrix of size m by n*/
   double a_sa[]; /* in row-indexed form */
@@ -18,13 +19,13 @@ leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
 /* steps 0: atrans = a transpose */
 /*          dtrans = d transpose */
 /*       1: a2= atrans*a + dtrans*d */
-/*       2: c= atrans*b */
+/*       2: c= atrans*b       PM:  b?????? */
 /*       3: solve a2x=c by conjagate gradient */
 
 {
   int itol, itmax, *iter;
-  double tol, *err, d[17000];
-  int i, j, nlen;
+  double tol, *err;
+  int nlen;
   int *a1_ija, *a2_ija, *a3_ija; /* square matrices of size m for internal use */
   double *a1_sa, *a2_sa, *a3_sa; /* in row-indexed form */
   int *atrans_ija; /* matrix of size m by n for internal use */
@@ -50,15 +51,6 @@ leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
 
   printf("m,n,p= %d %d %d\n", m, n, p);
 
-  /*        for (i=0;i<a_ija[a_ija[0]-1];i++)
-   printf("%d %f\n",a_ija[i],a_sa[i]);
-
-   for (i=0;i<d_ija[d_ija[0]-1];i++)
-   printf("%d %f\n",d_ija[i],d_sa[i]);
-
-   for (i=0;i<n;i++)
-   printf("%d %f\n",i,b[i]); */
-
   sprstp(a_sa, a_ija, atrans_sa, atrans_ija);
   sprstp(d_sa, d_ija, dtrans_sa, dtrans_ija);
 
@@ -77,9 +69,6 @@ leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
 
   linbcg(a2_ija, a2_sa, m, c, x, itol, tol, itmax, iter, err);
 
-  /*        for (i=0;i<m;i++)
-   printf("%d %f\n",i,x[i]);  */
-
   free(c);
   free(atrans_sa);
   free(atrans_ija);
@@ -95,8 +84,7 @@ leasq_sparse(a_ija, a_sa, d_ija, d_sa, m, n, p, x, b)
   return;
 }
 
-sprsax(sa, ija, x, b, m, n)
-  double sa[], x[], b[];int ija[];int m, n; {
+void sprsax(double sa[], int ija[], double x[], double b[], int m, int n) {
   int i, k;
   for (i = 0; i < n; i++) {
     if (i < m)
@@ -109,8 +97,9 @@ sprsax(sa, ija, x, b, m, n)
   return;
 }
 
-sprsad(sa, ija, sb, ijb, sc, ijc, nmax)
-  double sa[], sb[], sc[];int ija[], ijb[], ijc[]; {
+void sprsad(sa, ija, sb, ijb, sc, ijc, nmax)
+  double sa[], sb[], sc[];int ija[], ijb[], ijc[];int nmax; // GK: 03.03.2013 Missing argument.
+{
   int i, na, nb, index;
 
   index = ija[0];
@@ -159,7 +148,7 @@ sprsad(sa, ija, sb, ijb, sc, ijc, nmax)
   }
 }
 
-sprstm(sa, ija, sb, ijb, thresh, nmax, sc, ijc, m, n)
+void sprstm(sa, ija, sb, ijb, thresh, nmax, sc, ijc, m, n)
   double sa[], sb[], sc[], thresh;int ija[], ijb[], ijc[], nmax;int m, n; {
   int i, ijma, ijmb, j, k, ma, mb, mbb;
   double sum;
@@ -216,10 +205,10 @@ sprstm(sa, ija, sb, ijb, thresh, nmax, sc, ijc, m, n)
   }
 }
 
-sprstp(sa, ija, sb, ijb)
+void sprstp(sa, ija, sb, ijb)
   double sa[], sb[];int ija[], ijb[]; {
   void indexx(int n, int arr[], int indx[]);
-  int j, jl, jm, jp, ju, k, m, n2, noff, inc, iv, i;
+  int j, jl, jm, jp, ju, k, m, n2, noff, inc, iv;
   double v;
 
   n2 = ija[0];
@@ -274,8 +263,6 @@ sprstp(sa, ija, sb, ijb)
     } while (inc > 1);
   }
 }
-
-#define SWAP(a,b) itempri=(a);(a)=(b);(b)=itempri;
 
 void indexx(int n, int arr[], int indx[]) {
   int i, indxt, ir, itempri, j, k, l, jstack, *istack, a;
@@ -344,12 +331,12 @@ void indexx(int n, int arr[], int indx[]) {
   free(istack);
 }
 
-linbcg(a_ija, a_sa, n, b, x, itol, tol, itmax, iter, err)
+void linbcg(a_ija, a_sa, n, b, x, itol, tol, itmax, iter, err)
   int a_ija[], n, itol, itmax, *iter;double a_sa[], b[], x[], tol, *err; {
   void asolve(int n, double b[], double x[], double a_sa[]);
   double snrm(int n, double sx[], int itol);
   int j;
-  double ak, akden, bk, bkden, bknum, bnrm, dxnrm, xnrm, zminrm, znrm;
+  double ak, akden, bk, bkden, bknum, bnrm = 0;
   double *p, *pp, *r, *rr, *z, *zz;
 
   p = (double *) malloc(n * sizeof(double));
@@ -408,7 +395,7 @@ linbcg(a_ija, a_sa, n, b, x, itol, tol, itmax, iter, err)
     if (itol == 1)
       *err = snrm(n, r, itol) / bnrm;
     else if (itol == 2) *err = snrm(n, z, itol) / bnrm;
-    printf("iter=%4d err=%12.6f\n", *iter, *err);
+    //printf("iter=%4d err=%12.6f\n", *iter, *err); // 2013.06.17 GK Suppressed output.
     if (*err <= tol) break;
   }
   free(p);

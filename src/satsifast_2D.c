@@ -1,12 +1,37 @@
+//-------------------------------------------------------------------------------------------------
+// SATSIFAST_2D
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code not modified. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #define TODEG 57.29577951
-#define MAXDATA 7000
-#define MAXX 56
-#define MAXY 56
-#define MAXBOX 900
-#define SRMAXBOX 30
+/*
+ #define MAXDATA 7000
+ #define MAXX 56
+ #define MAXY 56
+ #define MAXBOX 900
+ #define SRMAXBOX 30
+ */
+// Modified by GK 30.08.2012
+#define MAXDATA 70000
+#define MAXX 200
+#define MAXY 200
+#define MAXBOX 9000
+#define SRMAXBOX 300
+
 /* COORDINATES ARE EAST,NORTH,UP */
 
 main(argc, argv)

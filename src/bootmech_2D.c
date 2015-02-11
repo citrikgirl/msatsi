@@ -1,10 +1,33 @@
-/* a program to run the bootstrap operation for satsi */
+//-------------------------------------------------------------------------------------------------
+// BOOTMECH_2D
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code updated to C99 standard. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXDATA 7000
+/* a program to run the bootstrap operation for satsi */
+// [GK 2013.05.15] Original satsi setup.
+//#define MAXDATA 7000
+// [GK 2013.05.15] Standard version.
+#define MAXDATA 70000
 
-main(argc, argv)
-  int argc;char **argv; {
+// GK: 2013.03.03 Additional declarations to suppress warning messages;
+int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
+    float ddirf[], float rakef[], int nobs_t, float cwt);
+void switcher(float ddir1, float dip1, float rake1, float *ddir2, float *dip2,
+    float *rake2);
+
+int main(int argc, char **argv) {
   float *dip1, *ddir1, *rake1, *dip2, *ddir2, *rake2; /* focal mechanism data, input + auxiliary plane */
   float *dipf, *ddirf, *rakef; /* focal mechanism data, for inversion */
   int *x, *y; /* focal mechanism bins, input */
@@ -14,8 +37,9 @@ main(argc, argv)
   int nobs, ntries; /* number of observations, number bootstrap trials */
   float cwt; /* damping parameter */
   FILE *fpin; /* input file pointer */
-  char name[20], headline[200]; /* character line */
+  char name[40], headline[200]; /* character line */
   int n, i, j; /* dummy variables */
+  int returnvalue = 0;
 
   rand = seed();
 
@@ -34,12 +58,15 @@ main(argc, argv)
   ny = (int *) malloc(MAXDATA * sizeof(int));
 
   /* read in data */
-  if (argc != 5) {
-    fprintf(stderr, "usage: bootmech_2D file ntries frac damping\n");
-    return;
+  --argc; /* [PM 11.04.2013] Added for consistency with other programs*/
+  ++argv; /* [PM 11.04.2013] Added for consistency with other programs*/
+  if (argc != 4) /* [PM 11.04.2013] changed from 5 to 4 */
+  {
+    fprintf(stderr, "usage: bootmech_2D.exe file ntries frac damping\n");
+    return -5001; // [GK 2013.03.08] Corrected output value, 11.04.2013 PM: GK - 5000.
   }
 
-  ++argv;
+  /* ++argv; 11.04.2013: suppressed acordingly I hope :D*/
   sscanf(*argv, "%s", name);
   ++argv;
   sscanf(*argv, "%d", &ntries);
@@ -51,7 +78,7 @@ main(argc, argv)
   fpin = fopen(name, "r");
   if (fpin == NULL) {
     fprintf(stderr, "unable to open %s.\n", name);
-    return;
+    return -5002; // [GK 2013.03.08] Corrected output value., 2013.04.11 PM : GK - 5000
   }
 
   fgets(headline, 200, fpin);
@@ -99,7 +126,9 @@ main(argc, argv)
       if (rakef[n] < 0) rakef[n] += 360;
     }
     printf("%d\n", i);
-    slfast_2D(name, nx, ny, dipf, ddirf, rakef, nobs, cwt);
+    returnvalue = slfast_2D(name, nx, ny, dipf, ddirf, rakef, nobs, cwt);
+    if (returnvalue < 0) break;
+
     printf("%d\n", i);
   }
   fclose(fpin);
@@ -115,4 +144,6 @@ main(argc, argv)
   free(rakef);
   free(nx);
   free(ny);
+
+  return returnvalue; // [GK 2013.03.08] Fixed output value for the purpose of MSATSI.
 }

@@ -1,17 +1,47 @@
+//-------------------------------------------------------------------------------------------------
+// SATSI_4D_TRADEOFF
+//
+// Original code:
+//   Jeanne Hardebeck <jhardebeck@usgs.gov>
+//   available at: http://earthquake.usgs.gov/research/software/
+// 
+// Corrections to the original code:
+//   Grzegorz Kwiatek [GK] <kwiatek@gfz-potsdam.de> <http://www.sejsmologia-gornicza.pl/about>
+//   Patricia Martinez-Garzon [PM] <patricia@gfz-potsdam.de>
+// 
+//   Code updated to C99 standard. 
+//
+// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+//-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define TODEG 57.29577951
-#define MAXDATA 7200
-#define MAXX 14
-#define MAXY 14
-#define MAXZ 14
-#define MAXT 14
-#define MAXBOX 1764
-#define SRMAXBOX 42
+/* [GK 2013.05.15] Original satsi setup.
+ #define MAXDATA 7200
+ #define MAXX 14
+ #define MAXY 14
+ #define MAXZ 14
+ #define MAXT 14
+ #define MAXBOX 1764
+ #define SRMAXBOX 42
+ */
+// [GK 2013.05.15] Standard version.
+#define MAXDATA 70000
+#define MAXX 50
+#define MAXY 50
+#define MAXZ 50
+#define MAXT 50
+#define MAXBOX 10000
+#define SRMAXBOX 100
 /* COORDINATES ARE EAST,NORTH,UP */
 
-main(argc, argv)
+// [GK 2013.03.03] Additional declarations to suppress warning messages;
+void sprsax(double sa[], int ija[], double x[], double b[], int m, int n);
+void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
+    int n, int p, double x[], double b[]);
+
+int main(argc, argv)
   /* slickenside inversion program */
   int argc; /* argument count */
   char **argv; /* argument string */
@@ -26,7 +56,7 @@ main(argc, argv)
   double stress[5 * MAXBOX]; /* stress tensor in vector form xx,xy,xz,yy,yz,zz */
   double *slick; /* slickenside vector elements vector */
   double n1, n2, n3; /* normal vector elements */
-  double norm[MAXDATA][3]; /* storage of n1,n2,n3 */
+  //double norm[MAXDATA][3]; /* storage of n1,n2,n3 */
   double mech_misfit, mvar; /* mechanism misfit, model variance */
   double *stress_len; /* stress field model length (vector) */
   double *slick_pre; /* predicted slip vector */
@@ -56,21 +86,22 @@ main(argc, argv)
   /* get file pointers */
   --argc;
   ++argv;
-  if (argc < 3) {
+  if (argc != 4) /* [PM 11.04.2013] Corrected from 3 to 4, changed from < to != */
+  {
     printf(
-        "usage: satsi_4D_tradeoff data_file outfile damping time/space_damping\n");
-    return;
+        "usage: satsi_4D_tradeoff.exe data_file outfile damping time/space_damping\n");
+    return -2001; /* [PM 11.04.2013] Changed from -1 to -2001 */
   }
   fpin = fopen(*argv, "r");
   if (fpin == NULL) {
     printf("unable to open %s.\n", *argv);
-    return;
+    return -2002; /* [PM 11.04.2013] Changed from -2 to -2002 */
   }
   ++argv;
   fpout = fopen(*argv, "a");
   if (fpout == NULL) {
     printf("unable to open %s.\n", *argv);
-    return;
+    return -2003; /* [PM 11.04.2013] Changed from -2 to -2002 */
   }
   ++argv;
   sscanf(*argv, "%lf", &cwt);
@@ -101,9 +132,10 @@ main(argc, argv)
     n2 = cos(z) * sin(z2);
     n3 = cos(z2);
 
-    norm[nobs][0] = n1;
-    norm[nobs][1] = n2;
-    norm[nobs][2] = n3;
+    // [GK 2013.03.03] Commented out as it is of no use.
+    //norm[nobs][0] = n1;
+    //norm[nobs][1] = n2;
+    //norm[nobs][2] = n3;
 
     /* slickenside vector calculation */
     slick[j] = -cos(z3) * cos(z) - sin(z3) * sin(z) * cos(z2);
@@ -122,7 +154,6 @@ main(argc, argv)
       k = 5 * nloc;
       nloc++;
     }
-
     temp[0] = n1 - n1 * n1 * n1 + n1 * n3 * n3;
     temp[1] = n2 - 2. * n1 * n1 * n2;
     temp[2] = n3 - 2. * n1 * n1 * n3;
@@ -174,7 +205,7 @@ main(argc, argv)
     ++nobs;
     /* check to see if all possible data has been read */
     if (nobs == MAXDATA) {
-      fprintf(fpout, "NOT ALL DATA COULD BE READ.\n");
+      printf("NOT ALL DATA COULD BE READ.\n");
       break;
     }
   } /* end of data read loop */
@@ -198,8 +229,9 @@ main(argc, argv)
         if (i < j) for (ny = i + 1; ny < j; ny++) {
           ip = 0;
           for (i2 = 0; i2 < nloc; i2++)
-            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz+nt)
-        ip=1;
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
           if (ip == 0) {
             lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                 + MAXT * nz + nt;
@@ -225,8 +257,9 @@ main(argc, argv)
         if (i < j) for (nx = i + 1; nx < j; nx++) {
           ip = 0;
           for (i2 = 0; i2 < nloc; i2++)
-            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz+nt)
-        ip=1;
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
           if (ip == 0) {
             lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                 + MAXT * nz + nt;
@@ -252,8 +285,9 @@ main(argc, argv)
         if (i < j) for (nz = i + 1; nz < j; nz++) {
           ip = 0;
           for (i2 = 0; i2 < nloc; i2++)
-            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz+nt)
-        ip=1;
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
           if (ip == 0) {
             lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                 + MAXT * nz + nt;
@@ -279,8 +313,9 @@ main(argc, argv)
         if (i < j) for (nt = i + 1; nt < j; nt++) {
           ip = 0;
           for (i2 = 0; i2 < nloc; i2++)
-            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz+nt)
-        ip=1;
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
           if (ip == 0) {
             lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                 + MAXT * nz + nt;
@@ -326,18 +361,12 @@ main(argc, argv)
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
               k = 5 * i2;
           if (k > -1) {
-
-            printf("%d %d %d %d %d\n", k, nx, ny, nz, nt);
-
             k2 = -1;
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * (nx + 1) + MAXZ * MAXT * ny
                       + MAXT * nz + nt) k2 = 5 * i2;
             if ((nx < MAXX - 1) && (k2 > -1)) {
-
-              printf("%d %d\n", k, k2);
-
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -363,9 +392,6 @@ main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * (ny + 1)
                       + MAXT * nz + nt) k2 = 5 * i2;
             if ((ny < MAXY - 1) && (k2 > -1)) {
-
-              printf("%d %d\n", k, k2);
-
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -391,9 +417,6 @@ main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                       + MAXT * (nz + 1) + nt) k2 = 5 * i2;
             if ((nz < MAXZ - 1) && (k2 > -1)) {
-
-              printf("%d %d\n", k, k2);
-
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -419,23 +442,20 @@ main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt
                       + 1) k2 = 5 * i2;
             if ((nt < MAXT - 1) && (k2 > -1)) {
-
-              printf("%d %d\n", k, k2);
-
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt * twt;
+                  diag_sa[j + i] = twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt * twt;
+                  d_sa[index] = twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt * twt;
+                  diag_sa[j + i] = -twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt * twt;
+                  d_sa[index] = -twt;
                   index++;
                 }
               }
@@ -460,16 +480,10 @@ main(argc, argv)
   d_ija[nrows] = index + nrows + 1;
   d_sa[nrows] = 0;
   for (i = 0; i < d_ija[d_ija[0] - 1]; i++) {
-    if (d_sa[i] == 0)
-      dtemp_sa[i] = 0;
-    else
-      dtemp_sa[i] = d_sa[i] / fabs(d_sa[i]);
+    dtemp_sa[i] = d_sa[i];
     d_sa[i] = cwt * cwt * d_sa[i];
   }
   p = nrows;
-
-  /*        for (i=0;i<p;i++)
-   printf("%d %d %f\n",i,d_ija[i],d_sa[i]); */
 
   /* solve equations via linear least squares */
   leasq_sparse(amat_ija, amat_sa, d_ija, d_sa, m, n, p, stress, slick);
@@ -505,4 +519,6 @@ main(argc, argv)
   free(slick);
   free(slick_pre);
   free(lindex);
+
+  return 0; // [GK 2013.03.08] Default return value.
 }
