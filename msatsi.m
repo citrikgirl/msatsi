@@ -4,7 +4,6 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 %   full documentation of msatsi.m routine, see http://induced.pl/msatsi 
 %   or documentation files provided in MSATSI package.
 %
-
 %   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
 %   $Revision: 1.0.8 $  $Date: 2015.02.04 $ 
