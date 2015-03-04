@@ -383,6 +383,8 @@ int main(argc, argv)
       angstd);
   fprintf(fpout, "avg tau= %f , std. dev.= %f\n", magavg, magstd);
 
+  fclose(fpout);
+
   free(ddir);
   free(dip);
   free(rake);

@@ -346,6 +346,7 @@ int main(argc, argv)
   mvar = sqrt(mvar);
 
   fprintf(fpout, "%g %g\n", mech_misfit, mvar);
+  fclose(fpout);
 
   free(diag_sa);
   free(diag_ija);

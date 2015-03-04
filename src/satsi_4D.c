@@ -557,6 +557,7 @@ int main(argc, argv)
   fprintf(fpout, "\nfit angle mean= %f standard deviation= %f\n", angavg,
       angstd);
   fprintf(fpout, "avg tau= %f , std. dev.= %f\n", magavg, magstd);
+  fclose(fpout);
 
   free(ddir);
   free(dip);
