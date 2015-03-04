@@ -11,7 +11,7 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
   int nobs, ntries; /* number of observations, number bootstrap trials */
   float cwt; /* damping parameter */
   FILE *fpin; /* input file pointer */
-  char name[40], headline[200]; /* character line */
+  char name[255], headline[200]; /* character line */
   int n, i, j; /* dummy variables */
   int returnvalue = 0;
 

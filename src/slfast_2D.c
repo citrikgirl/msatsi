@@ -54,7 +54,7 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
   double vecs[3][3]; /* eigenvectors */
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
-  char name[40]; /* output file name */
+  char name[255]; /* output file name */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, m, n, p; /* dummy variables */
   double z, z2, z3, temp[5]; /* more dummy variables */

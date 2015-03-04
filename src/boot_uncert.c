@@ -15,7 +15,7 @@
 //   directive provides additional output of some parameters for the purpose of MSATSI_PLOT 
 //   routine.
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,7 +41,7 @@ int main(argc, argv)
   float t1, t2, t3, d1, d2, d3; /* trend and plunge of best-fit solution */
   float trad[3], drad[3], trrad, plrad; /* trend and plunge, radians */
   FILE *fpin, *fpout; /* input and output file pointers */
-  char namein[40], nameout[40]; /* input and output file names */
+  char namein[255], nameout[255]; /* input and output file names */
   float best[3][3], bestmag; /* best-fit stress tensor and it's length */
   float stress[3][3], mag; /* stress tensor and it's length */
   float dot[100000], bdot, level; /* tensor dot products */
@@ -54,7 +54,7 @@ int main(argc, argv)
   float angle; /* Dif angle between best sol and bootstrap sol */
 #ifdef GK_EXTENSION
   int xgrid, ygrid, zgrid, tgrid;
-  char nameout2[40];
+  char nameout2[255];
   FILE *fpout2;
 #endif
 
