@@ -11,7 +11,7 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
@@ -60,7 +60,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
   double vecs[3][3]; /* eigenvectors */
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
-  char name[20]; /* output file name */
+  char name[255]; /* output file name */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, ip, m, n, p, i2; /* dummy variables */
   double z, z2, z3, temp[5]; /* more dummy variables */
@@ -422,17 +422,17 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt;
+                  diag_sa[j + i] = twt * twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt;
+                  d_sa[index] = twt * twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt;
+                  diag_sa[j + i] = -twt * twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt;
+                  d_sa[index] = -twt * twt;
                   index++;
                 }
               }

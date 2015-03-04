@@ -11,7 +11,7 @@
 // 
 //   Code not modified. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
@@ -426,17 +426,17 @@ main(argc, argv)
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt;
+                  diag_sa[j + i] = twt * twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt;
+                  d_sa[index] = twt * twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt;
+                  diag_sa[j + i] = -twt * twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt;
+                  d_sa[index] = -twt * twt;
                   index++;
                 }
               }

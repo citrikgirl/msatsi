@@ -11,7 +11,7 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
 #include <math.h>
 #include <stdio.h>
@@ -392,6 +392,9 @@ int main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * (ny + 1)
                       + MAXT * nz + nt) k2 = 5 * i2;
             if ((ny < MAXY - 1) && (k2 > -1)) {
+
+              printf("%d %d\n", k, k2);
+
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -417,6 +420,9 @@ int main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
                       + MAXT * (nz + 1) + nt) k2 = 5 * i2;
             if ((nz < MAXZ - 1) && (k2 > -1)) {
+
+              printf("%d %d\n", k, k2);
+
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -442,20 +448,23 @@ int main(argc, argv)
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt
                       + 1) k2 = 5 * i2;
             if ((nt < MAXT - 1) && (k2 > -1)) {
-              for (i = 0; i < 5; i++) {
+
+                printf("%d %d\n", k, k2);
+
+                for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt;
+                  diag_sa[j + i] = twt * twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt;
+                  d_sa[index] = twt * twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt;
+                  diag_sa[j + i] = -twt * twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt;
+                  d_sa[index] = -twt * twt;
                   index++;
                 }
               }
@@ -480,10 +489,16 @@ int main(argc, argv)
   d_ija[nrows] = index + nrows + 1;
   d_sa[nrows] = 0;
   for (i = 0; i < d_ija[d_ija[0] - 1]; i++) {
-    dtemp_sa[i] = d_sa[i];
+    if (d_sa[i] == 0)
+      dtemp_sa[i] = 0;
+    else
+      dtemp_sa[i] = d_sa[i] / fabs(d_sa[i]);
     d_sa[i] = cwt * cwt * d_sa[i];
   }
   p = nrows;
+
+  /*        for (i=0;i<p;i++)
+   printf("%d %d %f\n",i,d_ija[i],d_sa[i]); */
 
   /* solve equations via linear least squares */
   leasq_sparse(amat_ija, amat_sa, d_ija, d_sa, m, n, p, stress, slick);
