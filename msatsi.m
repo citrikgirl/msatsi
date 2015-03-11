@@ -92,15 +92,15 @@ if strcmp(archstr,'win32') || strcmp(archstr,'win64')
 elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
   %  win = false;
   if is_2D
-    exe_satsi = '/satsi_2D';
-    exe_tradeoff = '/satsi_2D_tradeoff';
-    exe_bootmech = '/bootmech_2D';
-    exe_bootuncert = '/boot_uncert';
+    exe_satsi = [msatsi_path '/satsi_2D'];
+    exe_tradeoff = [msatsi_path '/satsi_2D_tradeoff'];
+    exe_bootmech = [msatsi_path '/bootmech_2D'];
+    exe_bootuncert = [msatsi_path '/boot_uncert'];
   else
-    exe_satsi = '/satsi_4D';
-    exe_tradeoff = '/satsi_4D_tradeoff';
-    exe_bootmech = '/bootmech_4D';
-    exe_bootuncert = '/boot_uncert';
+    exe_satsi = [msatsi_path '/satsi_4D'];
+    exe_tradeoff = [msatsi_path '/satsi_4D_tradeoff'];
+    exe_bootmech = [msatsi_path '/bootmech_4D'];
+    exe_bootuncert = [msatsi_path '/boot_uncert'];
   end
 else
   error('Platform is not supported.');
@@ -900,7 +900,15 @@ close all;
 %=========================================================================
 function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
 
-fid = fopen([projectname '\' projectname '.out']);
+archstr = computer('arch');
+if strcmp(archstr,'win32') || strcmp(archstr,'win64')
+    fid = fopen([projectname '\' projectname '.out']);
+elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
+    fid = fopen([projectname '/' projectname '.out']);
+else
+  error('Platform is not supported.');
+end
+
 tline = fgetl(fid);
 if is_2D   % make it only str for fscanf
     BEST_TENSOR = zeros(size(GRIDS,1),8);
