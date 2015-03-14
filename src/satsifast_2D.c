@@ -56,7 +56,7 @@ main(argc, argv)
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
   char line[80]; /* character line */
-  char name[20]; /* output file name */
+  char name[255]; /* output file name */
   FILE *fpin; /* input file pointer */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, m, n, p; /* dummy variables */
