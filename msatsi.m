@@ -410,7 +410,7 @@ fid4 = fopen(boot_uncertainty,'r');
 
 SUMMARY_TAB = textscan(fid4,'%s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f'); 
 
-fid5 = fopen([projectname '\' projectname '.summary'],'w');
+fid5 = fopen([projectname '/' projectname '.summary'],'w');
 fprintf(fid5,'%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n', ...
     'PhiBest','PhiMin','PhiMax','Tr1Best','Tr1Min','Tr1Max','Pl1Best','Pl1Min','Pl1Max', ...
     'Tr2Best','Tr2Min','Tr2Max','Pl2Best','Pl2Min','Pl2Max','Tr3Best','Tr3Min','Tr3Max','Pl3Best','Pl3Min','Pl3Max');
@@ -493,14 +493,14 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
             case false
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE');
                 fclose(fid2);
             case true
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
                 dim = size(TABLE,1)/2;  
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE(1:dim,:)');
                 fclose(fid2);
         end
@@ -509,7 +509,7 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
             case false
                 fprintf(fid,'%d %d %d %d %d %d %d\n',TABLE');
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE');
                 fclose(fid2);
             case true
@@ -902,7 +902,7 @@ function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
 
 archstr = computer('arch');
 if strcmp(archstr,'win32') || strcmp(archstr,'win64')
-    fid = fopen([projectname '\' projectname '.out']);
+    fid = fopen([projectname '/' projectname '.out']);
 elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
     fid = fopen([projectname '/' projectname '.out']);
 else
