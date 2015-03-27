@@ -1,12 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* COORDINATES ARE EAST,NORTH,UP */
-
-//-------------------------------------------------------------------------------------------------
 // SATSI_2D_TRADEOFF
 //
 // Original code:
@@ -21,35 +13,31 @@
 //
 // $Last revision: 1.0 $  $Date: 2012/07/11  $  
 //-------------------------------------------------------------------------------------------------
-
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define TODEG 57.29577951
-//-------------------------------------------------------------------------------------------------
-// [GK 2013.05.15] Original SATSI setup.
-//#define MAXDATA 7000
-//#define MAXX 56
-//#define MAXY 56
-//#define MAXBOX 900
-//#define SRMAXBOX 30
-// [GK 2013.05.15] Standard version.
-//#define MAXDATA 70000
-//#define MAXX 50
-//#define MAXY 50
-//#define MAXBOX 10000
-//#define SRMAXBOX 100
+/* [GK 2013.05.15] Original SATSI setup.
+ #define MAXDATA 7000
+ #define MAXX 56
+ #define MAXY 56
+ #define MAXBOX 900
+ #define SRMAXBOX 30
+ */
 // [GK 2013.05.15] Extended SATSI setup.
 #define MAXDATA 70000
 #define MAXX 200
 #define MAXY 200
 #define MAXBOX 10000
 #define SRMAXBOX 100
-//-------------------------------------------------------------------------------------------------
+
+/* COORDINATES ARE EAST,NORTH,UP */
 
 // [GK 2013.03.03] Additional declarations to suppress warning messages;
 void sprsax(double sa[], int ija[], double x[], double b[], int m, int n);
 void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
     int n, int p, double x[], double b[]);
 
-//-------------------------------------------------------------------------------------------------
 int main(argc, argv)
   /* slickenside inversion program */
   int argc; /* argument count */
@@ -101,13 +89,13 @@ int main(argc, argv)
     return -1001; /*  [PM 11.04.2013] changing from -1 to -1001 */
   }
   fpin = fopen(*argv, "r");
-  if (fpin == NULL ) {
+  if (fpin == NULL) {
     printf("unable to open %s.\n", *argv);
     return -1002; /*  [PM] changing of code */
   }
   ++argv;
   fpout = fopen(*argv, "a");
-  if (fpout == NULL ) {
+  if (fpout == NULL) {
     printf("unable to open %s.\n", *argv);
     return -1003; /*  [PM] changing of code */
   }
@@ -221,12 +209,11 @@ int main(argc, argv)
     j = MAXY - 1;
     while ((j > -1) && (loclist[MAXY * nx + j] == -999))
       j--;
-    if (i < j)
-      for (ny = i + 1; ny < j; ny++)
-        if (loclist[MAXY * nx + ny] == -999) {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-        }
+    if (i < j) for (ny = i + 1; ny < j; ny++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
   }
   for (ny = 0; ny < MAXY; ny++) {
     i = 0;
@@ -235,12 +222,11 @@ int main(argc, argv)
     j = MAXX - 1;
     while ((j > -1) && (loclist[MAXY * j + ny] == -999))
       j--;
-    if (i < j)
-      for (nx = i + 1; nx < j; nx++)
-        if (loclist[MAXY * nx + ny] == -999) {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-        }
+    if (i < j) for (nx = i + 1; nx < j; nx++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
   }
   /* fill in diagonal */
   nrows = 3 * nobs;
@@ -360,6 +346,7 @@ int main(argc, argv)
   mvar = sqrt(mvar);
 
   fprintf(fpout, "%g %g\n", mech_misfit, mvar);
+  fclose(fpout);
 
   free(diag_sa);
   free(diag_ija);

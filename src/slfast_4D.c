@@ -1,12 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* COORDINATES ARE EAST,NORTH,UP */
-
-//-------------------------------------------------------------------------------------------------
 // SLFAST_4D
 //
 // Original code:
@@ -19,11 +11,12 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
-
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define TODEG 57.29577951
-//-------------------------------------------------------------------------------------------------
 // [GK 2013.05.15] Original SATSI setup.
 //#define MAXDATA 7200
 //#define MAXX 14
@@ -40,15 +33,7 @@
 #define MAXT 50
 #define MAXBOX 10000
 #define SRMAXBOX 100
-// [GK 2013.05.15] Extended SATSI setup.
-//#define MAXDATA 70000
-//#define MAXX 200
-//#define MAXY 200
-//#define MAXZ 200
-//#define MAXT 200
-//#define MAXBOX 10000
-//#define SRMAXBOX 100
-//-------------------------------------------------------------------------------------------------
+/* COORDINATES ARE EAST,NORTH,UP */
 
 // [GK 2013.03.03] Additional declarations to suppress warning messages;
 void dirplg(double e, double n, double u, double *pdir, double *pplg);
@@ -58,7 +43,6 @@ void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
     int n, int p, double x[], double b[]);
 
 /*slfast(name_in) slickenside inversion program */
-//-------------------------------------------------------------------------------------------------
 int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
   char name_in[]; /* name of file */
   int x[], y[], dep[], time[];float dipf[], ddirf[], rakef[];int nobs_t;float
@@ -76,7 +60,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
   double vecs[3][3]; /* eigenvectors */
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
-  char name[20]; /* output file name */
+  char name[255]; /* output file name */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, ip, m, n, p, i2; /* dummy variables */
   double z, z2, z3, temp[5]; /* more dummy variables */
@@ -96,7 +80,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
 
   sprintf(name, "%s.slboot", name_in);
   fpout = fopen(name, "a");
-  if (fpout == NULL ) {
+  if (fpout == NULL) {
     printf("unable to open %s.\n", name);
     return -8001; /* [PM 11.04.2013] Added number -8001*/
   }
@@ -138,8 +122,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
     for (i = 0; i < nloc; i++)
       if (lindex[i]
           == MAXY * MAXZ * MAXT * x[nobs] + MAXZ * MAXT * y[nobs]
-              + MAXT * dep[nobs] + time[nobs])
-        k = 5 * i;
+              + MAXT * dep[nobs] + time[nobs]) k = 5 * i;
     if (k == -1) {
       lindex[nloc] = MAXY * MAXZ * MAXT * x[nobs] + MAXZ * MAXT * y[nobs]
           + MAXT * dep[nobs] + time[nobs];
@@ -214,28 +197,24 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (ny < i))
-              i = ny;
+                && (ny < i)) i = ny;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (ny > j))
-              j = ny;
+                && (ny > j)) j = ny;
           }
         }
-        if (i < j)
-          for (ny = i + 1; ny < j; ny++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (ny = i + 1; ny < j; ny++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nz = 0; nz < MAXZ; nz++)
     for (nt = 0; nt < MAXT; nt++)
@@ -246,28 +225,24 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nx < i))
-              i = nx;
+                && (nx < i)) i = nx;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nx > j))
-              j = nx;
+                && (nx > j)) j = nx;
           }
         }
-        if (i < j)
-          for (nx = i + 1; nx < j; nx++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nx = i + 1; nx < j; nx++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
@@ -278,28 +253,24 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nz < i))
-              i = nz;
+                && (nz < i)) i = nz;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nz > j))
-              j = nz;
+                && (nz > j)) j = nz;
           }
         }
-        if (i < j)
-          for (nz = i + 1; nz < j; nz++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nz = i + 1; nz < j; nz++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
@@ -310,31 +281,27 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nt < i))
-              i = nt;
+                && (nt < i)) i = nt;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nt > j))
-              j = nt;
+                && (nt > j)) j = nt;
           }
         }
-        if (i < j)
-          for (nt = i + 1; nt < j; nt++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nt = i + 1; nt < j; nt++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
 
-  /* fill in diagonal */
+      /* fill in diagonal */
   nrows = 3 * nobs;
   m = 5 * nloc;
   if (nrows < m) {
@@ -375,8 +342,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * (nx + 1) + MAXZ * MAXT * ny
-                      + MAXT * nz + nt)
-                k2 = 5 * i2;
+                      + MAXT * nz + nt) k2 = 5 * i2;
             if ((nx < MAXX - 1) && (k2 > -1)) {
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
@@ -401,8 +367,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * (ny + 1)
-                      + MAXT * nz + nt)
-                k2 = 5 * i2;
+                      + MAXT * nz + nt) k2 = 5 * i2;
             if ((ny < MAXY - 1) && (k2 > -1)) {
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
@@ -427,8 +392,7 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                      + MAXT * (nz + 1) + nt)
-                k2 = 5 * i2;
+                      + MAXT * (nz + 1) + nt) k2 = 5 * i2;
             if ((nz < MAXZ - 1) && (k2 > -1)) {
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
@@ -453,23 +417,22 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt
-                      + 1)
-                k2 = 5 * i2;
+                      + 1) k2 = 5 * i2;
             if ((nt < MAXT - 1) && (k2 > -1)) {
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt;
+                  diag_sa[j + i] = twt * twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt;
+                  d_sa[index] = twt * twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt;
+                  diag_sa[j + i] = -twt * twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt;
+                  d_sa[index] = -twt * twt;
                   index++;
                 }
               }
@@ -551,7 +514,8 @@ int slfast_4D(name_in, x, y, dep, time, dipf, ddirf, rakef, nobs_t, cwt, twt)
             if (lam[0] != lam[2]) {
               phi = (lam[1] - lam[2]) / (lam[0] - lam[2]);
               fprintf(fpout, "%d %d %d %d %g ", nx, ny, nz, nt, phi);
-            } else
+            }
+            else
               fprintf(fpout, "2. "); /* error flag */
             for (i = 0; i < 3; ++i) {
               dirplg(vecs[0][i], vecs[1][i], vecs[2][i], &z, &z2);

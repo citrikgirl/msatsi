@@ -1,12 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* COORDINATES ARE EAST,NORTH,UP */
-
-//-------------------------------------------------------------------------------------------------
 // SLFAST_2D
 //
 // Original code:
@@ -21,27 +13,24 @@
 //
 // $Last revision: 1.0 $  $Date: 2012/07/11  $  
 //-------------------------------------------------------------------------------------------------
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define TODEG 57.29577951
-//-------------------------------------------------------------------------------------------------
-// [GK 2013.05.15] Original SATSI setup.
-//#define MAXDATA 7000
-//#define MAXX 56
-//#define MAXY 56
-//#define MAXBOX 900
-//#define SRMAXBOX 30
-// [GK 2013.05.15] Standard version.
-//#define MAXDATA 70000
-//#define MAXX 50
-//#define MAXY 50
-//#define MAXBOX 10000
-//#define SRMAXBOX 100
+/* [GK 2013.05.15] Original SATSI setup.
+#define MAXDATA 7000
+#define MAXX 56
+#define MAXY 56
+#define MAXBOX 900
+#define SRMAXBOX 30
+*/
 // [GK 2013.05.15] Extended SATSI setup.
 #define MAXDATA 70000
 #define MAXX 200
 #define MAXY 200
 #define MAXBOX 10000
 #define SRMAXBOX 100
-//-------------------------------------------------------------------------------------------------
+/* COORDINATES ARE EAST,NORTH,UP */
 
 // [GK 2013.03.03] Additional declarations to suppress warning messages.
 void dirplg(double e, double n, double u, double *pdir, double *pplg);
@@ -50,7 +39,6 @@ void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
     int n, int p, double x[], double b[]);
 
 /*slfast(name_in) slickenside inversion program */
-//-------------------------------------------------------------------------------------------------
 int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
     float ddirf[], float rakef[], int nobs_t, float cwt) {
   int x, y; /* focal mechanism bins */
@@ -66,7 +54,7 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
   double vecs[3][3]; /* eigenvectors */
   double dev_stress; /* deviatoric stress mag */
   float phi; /* stress ratio */
-  char name[40]; /* output file name */
+  char name[255]; /* output file name */
   FILE *fpout; /* output file pointer */
   int i, j, k, k2, m, n, p; /* dummy variables */
   double z, z2, z3, temp[5]; /* more dummy variables */
@@ -86,7 +74,7 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
 
   sprintf(name, "%s.slboot", name_in);
   fpout = fopen(name, "a");
-  if (fpout == NULL ) {
+  if (fpout == NULL) {
     printf("unable to open %s.\n", name);
     return -7001 /* 11.04.2013 PM: From -1 to -7001*/;
   }
@@ -193,12 +181,11 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
     j = MAXY - 1;
     while ((j > -1) && (loclist[MAXY * nx + j] == -999))
       j--;
-    if (i < j)
-      for (ny = i + 1; ny < j; ny++)
-        if (loclist[MAXY * nx + ny] == -999) {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-        }
+    if (i < j) for (ny = i + 1; ny < j; ny++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
   }
   for (ny = 0; ny < MAXY; ny++) {
     i = 0;
@@ -207,12 +194,11 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
     j = MAXX - 1;
     while ((j > -1) && (loclist[MAXY * j + ny] == -999))
       j--;
-    if (i < j)
-      for (nx = i + 1; nx < j; nx++)
-        if (loclist[MAXY * nx + ny] == -999) {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-        }
+    if (i < j) for (nx = i + 1; nx < j; nx++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
   }
   /* fill in diagonal */
   nrows = 3 * nobs;
@@ -357,7 +343,8 @@ int slfast_2D(char name_in[], int nx_in[], int ny_in[], float dipf[],
         if (lam[0] != lam[2]) {
           phi = (lam[1] - lam[2]) / (lam[0] - lam[2]);
           fprintf(fpout, "%d %d %g ", nx, ny, phi);
-        } else
+        }
+        else
           fprintf(fpout, "2. "); /* error flag */
         for (i = 0; i < 3; ++i) {
           dirplg(vecs[0][i], vecs[1][i], vecs[2][i], &z, &z2);

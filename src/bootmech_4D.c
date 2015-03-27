@@ -1,11 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* a program to run the bootstrap operation for satsi */
-
-//-------------------------------------------------------------------------------------------------
 // BOOTMECH_4D
 //
 // Original code:
@@ -18,15 +11,15 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
-
-//-------------------------------------------------------------------------------------------------
+/* a program to run the bootstrap operation for satsi */
+#include <stdio.h>
+#include <stdlib.h>
 // [GK 2013.05.15] Original satsi setup.
 //#define MAXDATA 7000
 // [GK 2013.05.15] Standard version.
 #define MAXDATA 70000
-//-------------------------------------------------------------------------------------------------
 
 // [GK 2013.03.03] Additional function declarations to suppress warning messages.
 int slfast_4D(char name_in[], int x[], int y[], int dep[], int time[],
@@ -35,7 +28,6 @@ int slfast_4D(char name_in[], int x[], int y[], int dep[], int time[],
 void switcher(float ddir1, float dip1, float rake1, float *ddir2, float *dip2,
     float *rake2);
 
-//-------------------------------------------------------------------------------------------------
 int main(argc, argv)
   int argc;char **argv; {
   float *dip1, *ddir1, *rake1, *dip2, *ddir2, *rake2; /* focal mechanism data, input + auxiliary plane */
@@ -47,7 +39,7 @@ int main(argc, argv)
   int nobs, ntries; /* number of observations, number bootstrap trials */
   double cwt, twt; /* damping parameter, time/space damping ratio */
   FILE *fpin; /* input file pointer */
-  char name[40], headline[200]; /* character line */
+  char name[255], headline[200]; /* character line */
   int n, i, j; /* dummy variables */
   int returnvalue = 0; /* [PM 11.04.2013] Added for consistency with 2D version*/
 
@@ -76,7 +68,8 @@ int main(argc, argv)
   //++argv;
   if (argc != 6) // [GK 16.06.2013] Reverted due to crash.
       {
-    fprintf(stderr,"usage: bootmech_4D.exe file ntries frac damping time/space_damping\n");
+    fprintf(stderr,
+        "usage: bootmech_4D.exe file ntries frac damping time/space_damping\n");
     return -6001; // [PM 11.04.2013] changed from -1 to -6001.
   }
 
@@ -97,8 +90,8 @@ int main(argc, argv)
   printf("%lf\r\n", twt);
 
   fpin = fopen(name, "r");
-  if (fpin == NULL ) {
-    fprintf(stderr,"unable to open %s.\n",name);
+  if (fpin == NULL) {
+    fprintf(stderr, "unable to open %s.\n", name);
     return -6002; /* [PM 11.04.2013] changed from -2 to -6002*/
   }
 
@@ -116,8 +109,7 @@ int main(argc, argv)
     for (n = 0; n < nobs; ++n) {
       rand = myrand(&rand);
       j = (int) (rand * (double) nobs);
-      if (j == nobs)
-        j = nobs - 1;
+      if (j == nobs) j = nobs - 1;
       if (myrand(&rand) >= frac) {
         nx[n] = x[j];
         ny[n] = y[j];
@@ -126,7 +118,8 @@ int main(argc, argv)
         ddirf[n] = ddir1[j];
         dipf[n] = dip1[j];
         rakef[n] = rake1[j];
-      } else {
+      }
+      else {
         nx[n] = x[j];
         ny[n] = y[j];
         nz[n] = dep[j];
@@ -145,20 +138,15 @@ int main(argc, argv)
         ddirf[n] = ddirf[n] + 180;
         rakef[n] = -rakef[n];
       }
-      if (ddirf[n] > 360)
-        ddirf[n] -= 360;
-      if (ddirf[n] < 0)
-        ddirf[n] += 360;
-      if (rakef[n] > 360)
-        rakef[n] -= 360;
-      if (rakef[n] < 0)
-        rakef[n] += 360;
+      if (ddirf[n] > 360) ddirf[n] -= 360;
+      if (ddirf[n] < 0) ddirf[n] += 360;
+      if (rakef[n] > 360) rakef[n] -= 360;
+      if (rakef[n] < 0) rakef[n] += 360;
     }
     printf("%d\n", i);
     returnvalue = slfast_4D(name, nx, ny, nz, nt, dipf, ddirf, rakef, nobs, cwt,
         twt); /* [PM 11.04.2013]: Added for consistency with 2D version. */
-    if (returnvalue < 0)
-      break;
+    if (returnvalue < 0) break;
 
     printf("%d\n", i);
   }
