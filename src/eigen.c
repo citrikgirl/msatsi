@@ -1,114 +1,17 @@
-//-------------------------------------------------------------------------------------------------
 #include <math.h>
-//-------------------------------------------------------------------------------------------------
-
 #define sub(I,J) (J+I*m)
+//void eigen(double a[3][3], double lam[3], double q[3][3])
+void eigen(a, lam, q)
+  /* subroutine to find eigen values and */
+  /* and eigenvectors of a 3 by 3 matrix */
+  /* at end eigenvalues are in lam and   */
+  /* the corresponding eigenvector is in */
+  /* q[i,*]                              */
+  /* does not destroy the matrix a       */
 
-//-------------------------------------------------------------------------------------------------
-void eigvec(a, m, x, b)
-  /* solves ax=b for x by gaussian elimination */
-  /* set up expecially for eigenvectors (i.e.  */
-  /* for singular matrices)                    */
-
-  short m;double a[]; /* a square matrix of size m */
-  double b[]; /* a vector of length m */
-  double x[]; /* a vector of length m */
-{
-  short i, i2, i3;
-  double d, hold, fact;
-  double mag;
-
-  /* take care of special cases */
-  if (m < 2) {
-    x[1] = 0.;
-    if (m == 1)
-      x[1] = b[1] / a[1];
-    return;
-  }
-
-  for (i = 0; i < m; ++i) { /* loop for each pivot */
-    for (i2 = i + 1; i2 < m; ++i2) { /* loop for each row below a pivot */
-
-      /* see if element below pivot is 0 */
-      if (a[sub(i2,i)] == 0.)
-        continue;
-
-      /* if element below pivot > pivot flop rows  */
-      if (fabs(a[sub(i2,i)]) > fabs(a[sub(i,i)])) {
-        hold = b[i];
-        b[i] = b[i2];
-        b[i2] = hold;
-        for (i3 = i; i3 < m; ++i3) {
-          hold = a[sub(i,i3)];
-          a[sub(i,i3)] = a[sub(i2,i3)];
-          a[sub(i2,i3)] = hold;
-        }
-      }
-
-      /* do the elimination */
-      fact = a[sub(i2,i)] / a[sub(i,i)];
-      a[sub(i2,i)] = 0.;
-      for (i3 = i + 1; i3 < m; ++i3)
-        a[sub(i2,i3)] = a[sub(i2,i3)] - fact * a[sub(i,i3)];
-      b[i2] = b[i2] - fact * b[i];
-
-    }
-  }
-
-  /* set small values to zero */
-  mag = 0.;
-  for (i = 0; i < m; ++i) {
-    for (i2 = 0; i2 < m; ++i2)
-      mag = mag + a[sub(i,i2)] * a[sub(i,i2)];
-  }
-  mag = sqrt(mag) / sqrt(2.);
-  for (i = 0; i < m; ++i) {
-    for (i2 = 0; i2 < m; ++i2)
-      if (mag * .001 > fabs(a[sub(i,i2)]))
-        a[sub(i,i2)] = 0.;
-  }
-
-  /* solve the equations */
-  if (a[m * m - 1] == 0.)
-    x[m - 1] = 1.;
-  else
-    x[m - 1] = b[m - 1] / a[m * m - 1];
-  for (i = m - 2; i > -1; --i) {
-    d = b[i];
-    for (i2 = i + 1; i2 < m; ++i2)
-      d = d - x[i2] * a[sub(i,i2)];
-    if (a[sub(i,i)] == 0.)
-      x[i] = 1.;
-    else
-      x[i] = d / a[sub(i,i)];
-  }
-
-  /* normalize the eigenvector */
-  mag = 0.;
-  for (i = 0; i < m; ++i)
-    mag = mag + x[i] * x[i];
-  mag = sqrt(mag);
-  if (mag == 0.)
-    return;
-  for (i = 0; i < m; ++i)
-    x[i] = x[i] / mag;
-
-  return;
-}
-
-//-------------------------------------------------------------------------------------------------
-void eigen(double a[3][3], double lam[3], double q[3][3])
-//void eigen(a, lam, q)
-/* subroutine to find eigen values and */
-/* and eigenvectors of a 3 by 3 matrix */
-/* at end eigenvalues are in lam and   */
-/* the corresponding eigenvector is in */
-/* q[i,*]                              */
-/* does not destroy the matrix a       */
-
-//double a[3][3]; /* the matrix */
-//double lam[3]; /* the eigen values */
-//double q[3][3]; /* used to hold eigen vectors at end */
+  double a[3][3]; /* the matrix */
+  double lam[3]; /* the eigen values */
+  double q[3][3]; /* used to hold eigen vectors at end */
 {
   double a2[3][3]; /* the matrix again */
   double r[3][3]; /* the decomposition matrices */
@@ -178,10 +81,8 @@ void eigen(double a[3][3], double lam[3], double q[3][3])
   for (i = 0; i < 3; ++i)
     a2[i][i] = a2[i][i] + shift;
   /* check to see if new iteration needed */
-  if (fabs(a2[2][1]) > fabs(.001 * a2[2][2]))
-    goto omt;
-  if (fabs(a2[1][0]) > fabs(.001 * a2[1][1]))
-    goto omt;
+  if (fabs(a2[2][1]) > fabs(.001 * a2[2][2])) goto omt;
+  if (fabs(a2[1][0]) > fabs(.001 * a2[1][1])) goto omt;
   /* store eigen values */
   for (i = 0; i < 3; ++i)
     lam[i] = a2[i][i];
@@ -190,8 +91,7 @@ void eigen(double a[3][3], double lam[3], double q[3][3])
     for (i = 0; i < 3; ++i) {
       for (j = 0; j < 3; ++j) {
         a2[i][j] = a[i][j];
-        if (i == j)
-          a2[i][j] = a2[i][j] - lam[k];
+        if (i == j) a2[i][j] = a2[i][j] - lam[k];
       }
       b[i] = 0;
     }
@@ -201,3 +101,91 @@ void eigen(double a[3][3], double lam[3], double q[3][3])
   }
 
 }
+
+void eigvec(a, m, x, b)
+  /* solves ax=b for x by gaussian elimination */
+  /* set up expecially for eigenvectors (i.e.  */
+  /* for singular matrices)                    */
+
+  short m;double a[]; /* a square matrix of size m */
+  double b[]; /* a vector of length m */
+  double x[]; /* a vector of length m */
+{
+  short i, i2, i3;
+  double d, hold, fact;
+  double mag;
+
+  /* take care of special cases */
+  if (m < 2) {
+    x[1] = 0.;
+    if (m == 1) x[1] = b[1] / a[1];
+    return;
+  }
+
+  for (i = 0; i < m; ++i) { /* loop for each pivot */
+    for (i2 = i + 1; i2 < m; ++i2) { /* loop for each row below a pivot */
+
+      /* see if element below pivot is 0 */
+      if (a[sub(i2, i)] == 0.) continue;
+
+      /* if element below pivot > pivot flop rows  */
+      if (fabs(a[sub(i2, i)]) > fabs(a[sub(i, i)])) {
+        hold = b[i];
+        b[i] = b[i2];
+        b[i2] = hold;
+        for (i3 = i; i3 < m; ++i3) {
+          hold = a[sub(i, i3)];
+          a[sub(i, i3)] = a[sub(i2, i3)];
+          a[sub(i2, i3)] = hold;
+        }
+      }
+
+      /* do the elimination */
+      fact = a[sub(i2, i)] / a[sub(i, i)];
+      a[sub(i2, i)] = 0.;
+      for (i3 = i + 1; i3 < m; ++i3)
+        a[sub(i2, i3)] = a[sub(i2, i3)] - fact * a[sub(i, i3)];
+      b[i2] = b[i2] - fact * b[i];
+
+    }
+  }
+
+  /* set small values to zero */
+  mag = 0.;
+  for (i = 0; i < m; ++i) {
+    for (i2 = 0; i2 < m; ++i2)
+      mag = mag + a[sub(i, i2)] * a[sub(i, i2)];
+  }
+  mag = sqrt(mag) / sqrt(2.);
+  for (i = 0; i < m; ++i) {
+    for (i2 = 0; i2 < m; ++i2)
+      if (mag * .001 > fabs(a[sub(i, i2)])) a[sub(i, i2)] = 0.;
+  }
+
+  /* solve the equations */
+  if (a[m * m - 1] == 0.)
+    x[m - 1] = 1.;
+  else
+    x[m - 1] = b[m - 1] / a[m * m - 1];
+  for (i = m - 2; i > -1; --i) {
+    d = b[i];
+    for (i2 = i + 1; i2 < m; ++i2)
+      d = d - x[i2] * a[sub(i, i2)];
+    if (a[sub(i, i)] == 0.)
+      x[i] = 1.;
+    else
+      x[i] = d / a[sub(i, i)];
+  }
+
+  /* normalize the eigenvector */
+  mag = 0.;
+  for (i = 0; i < m; ++i)
+    mag = mag + x[i] * x[i];
+  mag = sqrt(mag);
+  if (mag == 0.) return;
+  for (i = 0; i < m; ++i)
+    x[i] = x[i] / mag;
+
+  return;
+}
+

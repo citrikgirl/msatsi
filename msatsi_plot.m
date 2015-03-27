@@ -31,13 +31,19 @@ function [Hs, Hr] = msatsi_plot(projectname, type, varargin)
 %     Allows to specify/modify the detailes of plots created. See documentation
 %     of MSATSI package for details.
 %
-%   See also MSATSI
+%   See also: MSATSI
 
-%   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
+%   Copyright 2013-2015 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.8 $  $Date: 2015.02.04 $
+%   $Revision: 1.0.9 $  $Date: 2015.03.27 $
+%
+%   If you use MSATSI in your research, please refer to the following papers:
+%   Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
+%   Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+%   Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
 
 %   Development info:
+%     1.0.9 Various corrections to account for path/file handling in Mac/Linux versions.
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
 %           Correction to the best solution of satsi2d.
 

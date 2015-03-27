@@ -2,7 +2,6 @@
 /* this one is stolen from the HP-25 Application Program book */
 #define PI 3.14159265358979323846
 
-//-------------------------------------------------------------------------------------------------
 double myrand(px)
   double *px; /* either the seed or the last number */
 {
@@ -16,7 +15,6 @@ double myrand(px)
   return (*px);
 }
 
-//-------------------------------------------------------------------------------------------------
 double seed() /* gets a seed for myrand */
 {
   int i;

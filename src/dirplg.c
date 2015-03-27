@@ -5,12 +5,12 @@
 #define TODEG 57.29577951
 //*** END: Correction: Patricia Martinez-Garzon/Grzegorz Kwiatek 30.08.2012
 
-void dirplg(double e, double n, double u, double *pdir, double *pplg)
+//void dirplg(double e, double n, double u, double *pdir, double *pplg)
 
-//void dirplg(e, n, u, pdir, pplg)
-/* to find direction and plunge of a vector */
-//double e, n, u; /* the vector in east,north,up coordinates */
-//double *pdir, *pplg; /* pointers to the direction in east of north */
+void dirplg(e, n, u, pdir, pplg)
+  /* to find direction and plunge of a vector */
+  double e, n, u; /* the vector in east,north,up coordinates */
+  double *pdir, *pplg; /* pointers to the direction in east of north */
 /* and the plunge down the direction */
 {
   double z; /* dummy variable */

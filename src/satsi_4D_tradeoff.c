@@ -1,12 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* COORDINATES ARE EAST,NORTH,UP */
-
-//-------------------------------------------------------------------------------------------------
 // SATSI_4D_TRADEOFF
 //
 // Original code:
@@ -19,19 +11,21 @@
 // 
 //   Code updated to C99 standard. 
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
-
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define TODEG 57.29577951
-//-------------------------------------------------------------------------------------------------
-// [GK 2013.05.15] Original satsi setup.
-//#define MAXDATA 7200
-//#define MAXX 14
-//#define MAXY 14
-//#define MAXZ 14
-//#define MAXT 14
-//#define MAXBOX 1764
-//#define SRMAXBOX 42
+/* [GK 2013.05.15] Original satsi setup.
+ #define MAXDATA 7200
+ #define MAXX 14
+ #define MAXY 14
+ #define MAXZ 14
+ #define MAXT 14
+ #define MAXBOX 1764
+ #define SRMAXBOX 42
+ */
 // [GK 2013.05.15] Standard version.
 #define MAXDATA 70000
 #define MAXX 50
@@ -40,22 +34,13 @@
 #define MAXT 50
 #define MAXBOX 10000
 #define SRMAXBOX 100
-// [GK 2013.05.15] Extended SATSI setup.
-//#define MAXDATA 70000
-//#define MAXX 200
-//#define MAXY 200
-//#define MAXZ 200
-//#define MAXT 200
-//#define MAXBOX 10000
-//#define SRMAXBOX 100
-//-------------------------------------------------------------------------------------------------
+/* COORDINATES ARE EAST,NORTH,UP */
 
 // [GK 2013.03.03] Additional declarations to suppress warning messages;
 void sprsax(double sa[], int ija[], double x[], double b[], int m, int n);
 void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
     int n, int p, double x[], double b[]);
 
-//-------------------------------------------------------------------------------------------------
 int main(argc, argv)
   /* slickenside inversion program */
   int argc; /* argument count */
@@ -108,13 +93,13 @@ int main(argc, argv)
     return -2001; /* [PM 11.04.2013] Changed from -1 to -2001 */
   }
   fpin = fopen(*argv, "r");
-  if (fpin == NULL ) {
+  if (fpin == NULL) {
     printf("unable to open %s.\n", *argv);
     return -2002; /* [PM 11.04.2013] Changed from -2 to -2002 */
   }
   ++argv;
   fpout = fopen(*argv, "a");
-  if (fpout == NULL ) {
+  if (fpout == NULL) {
     printf("unable to open %s.\n", *argv);
     return -2003; /* [PM 11.04.2013] Changed from -2 to -2002 */
   }
@@ -235,28 +220,24 @@ int main(argc, argv)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (ny < i))
-              i = ny;
+                && (ny < i)) i = ny;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (ny > j))
-              j = ny;
+                && (ny > j)) j = ny;
           }
         }
-        if (i < j)
-          for (ny = i + 1; ny < j; ny++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (ny = i + 1; ny < j; ny++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nz = 0; nz < MAXZ; nz++)
     for (nt = 0; nt < MAXT; nt++)
@@ -267,28 +248,24 @@ int main(argc, argv)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nx < i))
-              i = nx;
+                && (nx < i)) i = nx;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nx > j))
-              j = nx;
+                && (nx > j)) j = nx;
           }
         }
-        if (i < j)
-          for (nx = i + 1; nx < j; nx++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nx = i + 1; nx < j; nx++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
@@ -299,28 +276,24 @@ int main(argc, argv)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nz < i))
-              i = nz;
+                && (nz < i)) i = nz;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nz > j))
-              j = nz;
+                && (nz > j)) j = nz;
           }
         }
-        if (i < j)
-          for (nz = i + 1; nz < j; nz++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nz = i + 1; nz < j; nz++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
@@ -331,31 +304,27 @@ int main(argc, argv)
           for (i2 = 0; i2 < nloc; i2++) {
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nt < i))
-              i = nt;
+                && (nt < i)) i = nt;
             if ((lindex[i2]
                 == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt)
-                && (nt > j))
-              j = nt;
+                && (nt > j)) j = nt;
           }
         }
-        if (i < j)
-          for (nt = i + 1; nt < j; nt++) {
-            ip = 0;
-            for (i2 = 0; i2 < nloc; i2++)
-              if (lindex[i2]
-                  == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
-                      + nt)
-                ip = 1;
-            if (ip == 0) {
-              lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                  + MAXT * nz + nt;
-              nloc++;
-            }
+        if (i < j) for (nt = i + 1; nt < j; nt++) {
+          ip = 0;
+          for (i2 = 0; i2 < nloc; i2++)
+            if (lindex[i2] == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz
+        + nt)
+        ip = 1;
+          if (ip == 0) {
+            lindex[nloc] = MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
+                + MAXT * nz + nt;
+            nloc++;
           }
+        }
       }
 
-  /* fill in diagonal */
+      /* fill in diagonal */
   nrows = 3 * nobs;
   m = 5 * nloc;
   if (nrows < m) {
@@ -396,8 +365,7 @@ int main(argc, argv)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * (nx + 1) + MAXZ * MAXT * ny
-                      + MAXT * nz + nt)
-                k2 = 5 * i2;
+                      + MAXT * nz + nt) k2 = 5 * i2;
             if ((nx < MAXX - 1) && (k2 > -1)) {
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
@@ -422,9 +390,11 @@ int main(argc, argv)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * (ny + 1)
-                      + MAXT * nz + nt)
-                k2 = 5 * i2;
+                      + MAXT * nz + nt) k2 = 5 * i2;
             if ((ny < MAXY - 1) && (k2 > -1)) {
+
+              printf("%d %d\n", k, k2);
+
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -448,9 +418,11 @@ int main(argc, argv)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny
-                      + MAXT * (nz + 1) + nt)
-                k2 = 5 * i2;
+                      + MAXT * (nz + 1) + nt) k2 = 5 * i2;
             if ((nz < MAXZ - 1) && (k2 > -1)) {
+
+              printf("%d %d\n", k, k2);
+
               for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
@@ -474,23 +446,25 @@ int main(argc, argv)
             for (i2 = 0; i2 < nloc; i2++)
               if (lindex[i2]
                   == MAXY * MAXZ * MAXT * nx + MAXZ * MAXT * ny + MAXT * nz + nt
-                      + 1)
-                k2 = 5 * i2;
+                      + 1) k2 = 5 * i2;
             if ((nt < MAXT - 1) && (k2 > -1)) {
-              for (i = 0; i < 5; i++) {
+
+                printf("%d %d\n", k, k2);
+
+                for (i = 0; i < 5; i++) {
                 diag_ija[j + i] = index;
                 if ((k + i) == (j + i))
-                  diag_sa[j + i] = twt;
+                  diag_sa[j + i] = twt * twt;
                 else {
                   d_ija[index] = k + i;
-                  d_sa[index] = twt;
+                  d_sa[index] = twt * twt;
                   index++;
                 }
                 if ((k2 + i) == (j + i))
-                  diag_sa[j + i] = -twt;
+                  diag_sa[j + i] = -twt * twt;
                 else {
                   d_ija[index] = k2 + i;
-                  d_sa[index] = -twt;
+                  d_sa[index] = -twt * twt;
                   index++;
                 }
               }
@@ -515,10 +489,16 @@ int main(argc, argv)
   d_ija[nrows] = index + nrows + 1;
   d_sa[nrows] = 0;
   for (i = 0; i < d_ija[d_ija[0] - 1]; i++) {
-    dtemp_sa[i] = d_sa[i];
+    if (d_sa[i] == 0)
+      dtemp_sa[i] = 0;
+    else
+      dtemp_sa[i] = d_sa[i] / fabs(d_sa[i]);
     d_sa[i] = cwt * cwt * d_sa[i];
   }
   p = nrows;
+
+  /*        for (i=0;i<p;i++)
+   printf("%d %d %f\n",i,d_ija[i],d_sa[i]); */
 
   /* solve equations via linear least squares */
   leasq_sparse(amat_ija, amat_sa, d_ija, d_sa, m, n, p, stress, slick);
@@ -542,6 +522,7 @@ int main(argc, argv)
   mvar = sqrt(mvar);
 
   fprintf(fpout, "%g %g\n", mech_misfit, mvar);
+  fclose(fpout);
 
   free(diag_sa);
   free(diag_ija);

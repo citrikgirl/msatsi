@@ -1,10 +1,11 @@
 #include <math.h>
+void stridip(n, e, u, strike, dip)
+
+  /* finds the strike and dip of a plane given its normal */
+  /* vector, output is in degrees north of east and then  */
+  /* uses a right hand rule for the dip of the plane */
 #define TORAD  57.29577951
 
-/* finds the strike and dip of a plane given its normal */
-/* vector, output is in degrees north of east and then  */
-/* uses a right hand rule for the dip of the plane */
-void stridip(n, e, u, strike, dip)
   double n, e, u;double *strike, *dip; {
   double x;
   if (u < 0.) {
@@ -23,10 +24,8 @@ void stridip(n, e, u, strike, dip)
   //*** ENDCorr: Patricia Martinez-Garzon/Grzegorz Kwiatek 30.08.2012
 
   *strike = *strike - 90.;
-  if (*strike < 0.)
-    *strike += 360.;
-  if (*strike > 360.)
-    *strike -= 360.;
+  if (*strike < 0.) *strike += 360.;
+  if (*strike > 360.) *strike -= 360.;
   x = sqrt(n * n + e * e); /* x is the horizontal magnitude */
   //*** Corr: Patricia Martinez-Garzon/Grzegorz Kwiatek 30.08.2012
   // Does not make any sense with dip=0, but at least program should not

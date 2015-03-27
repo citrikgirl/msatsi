@@ -1,12 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-//-------------------------------------------------------------------------------------------------
-
-/* COORDINATES ARE EAST,NORTH,UP */
-
-//-------------------------------------------------------------------------------------------------
 // SATSI_2D
 //
 // Original code:
@@ -21,40 +13,35 @@
 //
 // $Last revision: 1.0 $  $Date: 2012/07/11  $  
 //-------------------------------------------------------------------------------------------------
-
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define TODEG 57.29577951
-//-------------------------------------------------------------------------------------------------
-// [GK 2013.05.15] Original SATSI setup.
-//#define MAXDATA 7000
-//#define MAXX 56
-//#define MAXY 56
-//#define MAXBOX 900
-//#define SRMAXBOX 30
-// [GK 2013.05.15] Standard version.
-//#define MAXDATA 70000
-//#define MAXX 50
-//#define MAXY 50
-//#define MAXBOX 10000
-//#define SRMAXBOX 100
+/* [GK 2013.05.15] Original SATSI setup.
+ #define MAXDATA 7000
+ #define MAXX 56
+ #define MAXY 56
+ #define MAXBOX 900
+ #define SRMAXBOX 30
+ */
 // [GK 2013.05.15] Extended SATSI setup.
 #define MAXDATA 70000
 #define MAXX 200
 #define MAXY 200
 #define MAXBOX 10000
 #define SRMAXBOX 100
-//-------------------------------------------------------------------------------------------------
+/* COORDINATES ARE EAST,NORTH,UP */
 
 // [GK 2013.03.03] Additional declarations to suppress warning messages.
 void sprsax(double sa[], int ija[], double x[], double b[], int m, int n);
 void leasq_sparse(int a_ija[], double a_sa[], int d_ija[], double d_sa[], int m,
     int n, int p, double x[], double b[]);
 
-//-------------------------------------------------------------------------------------------------
 int main(argc, argv)
   /* slickenside inversion program */
   int argc; /* argument count */
   char **argv; /* argument string */
-  {
+{
   double *ddir, *dip, *rake; /* focal mechanism data */
   int *x, *y; /* focal mechanism bins */
   int nobs, nloc, nrows, nlocfill; /* number of observations, bins, rows */
@@ -98,34 +85,31 @@ int main(argc, argv)
   --argc;
   ++argv;
   if (argc != 3) /* [PM 11.04.2013] changed from < to != */
-    {
+  {
     printf("usage: satsi_2D.exe data_file outfile damping\n");
     return -3001; /* [PM 11.04.2013] changed from -1 to -3001*/
-    }
+  }
   fpin = fopen(*argv, "r");
-  if (fpin == NULL )
-    {
+  if (fpin == NULL) {
     printf("unable to open %s.\n", *argv);
     return -3002; /* [PM 11.04.2013] changed from -2 to -3002*/
-    }
+  }
   ++argv;
   fpout = fopen(*argv, "a");
-  if (fpout == NULL )
-    {
+  if (fpout == NULL) {
     printf("unable to open %s.\n", *argv);
     return -3003; /* [PM 11.04.2013] changed from -3 to -3003*/
-    }
+  }
   ++argv;
   sscanf(*argv, "%lf", &cwt);
   fgets(line, 80, fpin);
 
   for (i = 0; i < 3 * MAXDATA; i++)
     slick[i] = 0;
-  for (i = 0; i < 3 * MAXDATA + 25 * MAXBOX; i++)
-    {
+  for (i = 0; i < 3 * MAXDATA + 25 * MAXBOX; i++) {
     diag_sa[i] = 0;
     diag_ija[i] = 0;
-    }
+  }
   for (i = 0; i < MAXX; i++)
     for (j = 0; j < MAXY; j++)
       loclist[MAXY * i + j] = -999;
@@ -135,8 +119,7 @@ int main(argc, argv)
   nloc = 0;
   index = 0;
   while (fscanf(fpin, "%d %d %lf %lf %lf", &x[nobs], &y[nobs], &ddir[nobs],
-      &dip[nobs], &rake[nobs]) != EOF)
-    {
+      &dip[nobs], &rake[nobs]) != EOF) {
     j = 3 * nobs;
     z = ddir[nobs] / TODEG;
     z2 = dip[nobs] / TODEG;
@@ -159,12 +142,11 @@ int main(argc, argv)
     lindex = MAXY * x[nobs] + y[nobs];
     if (loclist[lindex] > -999)
       k = 5 * loclist[lindex];
-    else
-      {
+    else {
       loclist[lindex] = nloc;
       k = 5 * nloc;
       nloc++;
-      }
+    }
 
     temp[0] = n1 - n1 * n1 * n1 + n1 * n3 * n3;
     temp[1] = n2 - 2. * n1 * n1 * n2;
@@ -172,17 +154,15 @@ int main(argc, argv)
     temp[3] = -n1 * n2 * n2 + n1 * n3 * n3;
     temp[4] = -2. * n1 * n2 * n3;
     diag_ija[j] = index;
-    for (i = 0; i < 5; i++)
-      {
+    for (i = 0; i < 5; i++) {
       if ((k + i) == j)
         diag_sa[j] = temp[i];
-      else
-        {
+      else {
         amat_ija[index] = k + i;
         amat_sa[index] = temp[i];
         index++;
-        }
       }
+    }
 
     temp[0] = -n2 * n1 * n1 + n2 * n3 * n3;
     temp[1] = n1 - 2. * n1 * n2 * n2;
@@ -190,17 +170,15 @@ int main(argc, argv)
     temp[3] = n2 - n2 * n2 * n2 + n2 * n3 * n3;
     temp[4] = n3 - 2. * n2 * n2 * n3;
     diag_ija[j + 1] = index;
-    for (i = 0; i < 5; i++)
-      {
+    for (i = 0; i < 5; i++) {
       if ((k + i) == (j + 1))
         diag_sa[j + 1] = temp[i];
-      else
-        {
+      else {
         amat_ija[index] = k + i;
         amat_sa[index] = temp[i];
         index++;
-        }
       }
+    }
 
     temp[0] = -n3 * n1 * n1 - n3 + n3 * n3 * n3;
     temp[1] = -2. * n1 * n2 * n3;
@@ -208,164 +186,139 @@ int main(argc, argv)
     temp[3] = -n3 * n2 * n2 - n3 + n3 * n3 * n3;
     temp[4] = n2 - 2. * n2 * n3 * n3;
     diag_ija[j + 2] = index;
-    for (i = 0; i < 5; i++)
-      {
+    for (i = 0; i < 5; i++) {
       if ((k + i) == (j + 2))
         diag_sa[j + 2] = temp[i];
-      else
-        {
+      else {
         amat_ija[index] = k + i;
         amat_sa[index] = temp[i];
         index++;
-        }
       }
+    }
 
     ++nobs;
     /* check to see if all possible data has been read */
-    if (nobs == MAXDATA)
-      {
+    if (nobs == MAXDATA) {
       printf("NOT ALL DATA COULD BE READ.\n");
       break;
-      }
-    } /* end of data read loop */
+    }
+  } /* end of data read loop */
   nlocfill = nloc;
   /* fill in holes in grid */
-  for (nx = 0; nx < MAXX; nx++)
-    {
+  for (nx = 0; nx < MAXX; nx++) {
     i = 0;
     while ((i < MAXY) && (loclist[MAXY * nx + i] == -999))
       i++;
     j = MAXY - 1;
     while ((j > -1) && (loclist[MAXY * nx + j] == -999))
       j--;
-    if (i < j)
-      for (ny = i + 1; ny < j; ny++)
-        if (loclist[MAXY * nx + ny] == -999)
-          {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-          }
-    }
-  for (ny = 0; ny < MAXY; ny++)
-    {
+    if (i < j) for (ny = i + 1; ny < j; ny++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
+  }
+  for (ny = 0; ny < MAXY; ny++) {
     i = 0;
     while ((i < MAXX) && (loclist[MAXY * i + ny] == -999))
       i++;
     j = MAXX - 1;
     while ((j > -1) && (loclist[MAXY * j + ny] == -999))
       j--;
-    if (i < j)
-      for (nx = i + 1; nx < j; nx++)
-        if (loclist[MAXY * nx + ny] == -999)
-          {
-          loclist[MAXY * nx + ny] = nloc;
-          nloc++;
-          }
-    }
+    if (i < j) for (nx = i + 1; nx < j; nx++)
+      if (loclist[MAXY * nx + ny] == -999) {
+        loclist[MAXY * nx + ny] = nloc;
+        nloc++;
+      }
+  }
   /* fill in diagonal */
   nrows = 3 * nobs;
   m = 5 * nloc;
-  if (nrows < m)
-    {
+  if (nrows < m) {
     for (i = nrows; i < m; i++)
       diag_ija[i] = index;
     nrows = m;
-    }
-  for (i = index - 1; i >= 0; i--)
-    {
+  }
+  for (i = index - 1; i >= 0; i--) {
     amat_ija[i + nrows + 1] = amat_ija[i];
     amat_sa[i + nrows + 1] = amat_sa[i];
-    }
-  for (i = 0; i < nrows; i++)
-    {
+  }
+  for (i = 0; i < nrows; i++) {
     amat_ija[i] = diag_ija[i] + nrows + 1;
     amat_sa[i] = diag_sa[i];
-    }
+  }
   amat_ija[nrows] = index + nrows + 1;
   amat_sa[nrows] = 0;
   n = nrows;
 
   /* set up smoothing constraints */
-  for (i = 0; i < 3 * MAXDATA + 25 * MAXBOX; i++)
-    {
+  for (i = 0; i < 3 * MAXDATA + 25 * MAXBOX; i++) {
     diag_sa[i] = 0;
     diag_ija[i] = 0;
-    }
+  }
   index = 0;
   j = 0;
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
-      if (loclist[MAXY * nx + ny] > -999)
-        {
+      if (loclist[MAXY * nx + ny] > -999) {
         k = 5 * loclist[MAXY * nx + ny];
-        if ((nx < MAXX - 1) && (loclist[MAXY * (nx + 1) + ny] > -999))
-          {
+        if ((nx < MAXX - 1) && (loclist[MAXY * (nx + 1) + ny] > -999)) {
           k2 = 5 * loclist[MAXY * (nx + 1) + ny];
-          for (i = 0; i < 5; i++)
-            {
+          for (i = 0; i < 5; i++) {
             diag_ija[j + i] = index;
             if ((k + i) == (j + i))
               diag_sa[j + i] = 1;
-            else
-              {
+            else {
               d_ija[index] = k + i;
               d_sa[index] = 1;
               index++;
-              }
+            }
             if ((k2 + i) == (j + i))
               diag_sa[j + i] = -1;
-            else
-              {
+            else {
               d_ija[index] = k2 + i;
               d_sa[index] = -1;
               index++;
-              }
             }
-          j += 5;
           }
-        if ((ny < MAXY - 1) && (loclist[MAXY * nx + ny + 1] > -999))
-          {
-          k2 = 5 * loclist[MAXY * nx + ny + 1];
-          for (i = 0; i < 5; i++)
-            {
-            diag_ija[j + i] = index;
-            if ((k + i) == (j + i))
-              diag_sa[j + i] = 1;
-            else
-              {
-              d_ija[index] = k + i;
-              d_sa[index] = 1;
-              index++;
-              }
-            if ((k2 + i) == (j + i))
-              diag_sa[j + i] = -1;
-            else
-              {
-              d_ija[index] = k2 + i;
-              d_sa[index] = -1;
-              index++;
-              }
-            }
           j += 5;
-          }
         }
+        if ((ny < MAXY - 1) && (loclist[MAXY * nx + ny + 1] > -999)) {
+          k2 = 5 * loclist[MAXY * nx + ny + 1];
+          for (i = 0; i < 5; i++) {
+            diag_ija[j + i] = index;
+            if ((k + i) == (j + i))
+              diag_sa[j + i] = 1;
+            else {
+              d_ija[index] = k + i;
+              d_sa[index] = 1;
+              index++;
+            }
+            if ((k2 + i) == (j + i))
+              diag_sa[j + i] = -1;
+            else {
+              d_ija[index] = k2 + i;
+              d_sa[index] = -1;
+              index++;
+            }
+          }
+          j += 5;
+        }
+      }
   nrows = j;
-  if (5 * nloc > nrows)
-    {
+  if (5 * nloc > nrows) {
     for (i = nrows; i < 5 * nloc; i++)
       diag_ija[i] = index;
     nrows = 5 * nloc;
-    }
-  for (i = index - 1; i >= 0; i--)
-    {
+  }
+  for (i = index - 1; i >= 0; i--) {
     d_ija[i + nrows + 1] = d_ija[i];
     d_sa[i + nrows + 1] = d_sa[i];
-    }
-  for (i = 0; i < nrows; i++)
-    {
+  }
+  for (i = 0; i < nrows; i++) {
     d_ija[i] = diag_ija[i] + nrows + 1;
     d_sa[i] = diag_sa[i];
-    }
+  }
   d_ija[nrows] = index + nrows + 1;
   d_sa[nrows] = 0;
   for (i = 0; i < d_ija[d_ija[0] - 1]; i++)
@@ -382,15 +335,14 @@ int main(argc, argv)
   for (nx = 0; nx < MAXX; nx++)
     for (ny = 0; ny < MAXY; ny++)
       if ((loclist[MAXY * nx + ny] > -999)
-          && (loclist[MAXY * nx + ny] < nlocfill))
-        {
+          && (loclist[MAXY * nx + ny] < nlocfill)) {
         k = 5 * loclist[MAXY * nx + ny];
         fprintf(fpout, "%3d %3d ", nx, ny);
         fprintf(fpout, "%9.6f %9.6f %9.6f ", stress[k], stress[k + 1],
             stress[k + 2]);
         fprintf(fpout, "%9.6f %9.6f %9.6f\n", stress[k + 3], stress[k + 4],
             -(stress[k] + stress[k + 3]));
-        }
+      }
   fprintf(fpout, "\n");
 
   fprintf(fpout, "\ndip direction, dip, rake, fit angle, mag tau, X, Y\n");
@@ -399,8 +351,7 @@ int main(argc, argv)
   angstd = 0.;
   magavg = 0.;
   magstd = 0.;
-  for (i = 0; i < nobs; i++)
-    {
+  for (i = 0; i < nobs; i++) {
     ls1 = sqrt(
         slick[3 * i] * slick[3 * i] + slick[3 * i + 1] * slick[3 * i + 1]
             + slick[3 * i + 2] * slick[3 * i + 2]);
@@ -418,7 +369,7 @@ int main(argc, argv)
     magstd += ls2 * ls2;
     fprintf(fpout, "%7.1f  %7.1f  %7.1f  %7.1f %7.2f %4d %4d\n", ddir[i],
         dip[i], rake[i], z, ls2, x[i], y[i]);
-    }
+  }
   z3 = (double) nobs - 1;
   angstd = angstd - (angavg * angavg / nobs);
   angstd = angstd / z3;
@@ -431,6 +382,8 @@ int main(argc, argv)
   fprintf(fpout, "\nfit angle mean= %f standard deviation= %f\n", angavg,
       angstd);
   fprintf(fpout, "avg tau= %f , std. dev.= %f\n", magavg, magstd);
+
+  fclose(fpout);
 
   free(ddir);
   free(dip);
@@ -448,4 +401,4 @@ int main(argc, argv)
   free(loclist);
 
   return 0; // [GK 2013.03.03] Added default return value for the purpose of MSATSI;
-  }
+}

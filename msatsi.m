@@ -4,17 +4,19 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 %   full documentation of msatsi.m routine, see http://induced.pl/msatsi 
 %   or documentation files provided in MSATSI package.
 %
+%   See also: MSATSI_PLOT
 
-%   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
+%   Copyright 2013-2015 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.8 $  $Date: 2015.02.04 $ 
-% 
-% If you use MSATSI in your research, please refer to the following papers:
+%   $Revision: 1.0.9 $  $Date: 2015.03.27 $
 %
-% Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
-% Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
-% Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
-%
+%   If you use MSATSI in your research, please refer to the following papers:
+%   Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
+%   Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+%   Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
+
+%   Development info:
+%     1.0.9 Various corrections to account for path/file handling in Mac/Linux versions.
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
 %           Correction to the best solution of satsi2d.
 %
@@ -92,15 +94,15 @@ if strcmp(archstr,'win32') || strcmp(archstr,'win64')
 elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
   %  win = false;
   if is_2D
-    exe_satsi = '/satsi_2D';
-    exe_tradeoff = '/satsi_2D_tradeoff';
-    exe_bootmech = '/bootmech_2D';
-    exe_bootuncert = '/boot_uncert';
+    exe_satsi = [msatsi_path '/satsi_2D'];
+    exe_tradeoff = [msatsi_path '/satsi_2D_tradeoff'];
+    exe_bootmech = [msatsi_path '/bootmech_2D'];
+    exe_bootuncert = [msatsi_path '/boot_uncert'];
   else
-    exe_satsi = '/satsi_4D';
-    exe_tradeoff = '/satsi_4D_tradeoff';
-    exe_bootmech = '/bootmech_4D';
-    exe_bootuncert = '/boot_uncert';
+    exe_satsi = [msatsi_path '/satsi_4D'];
+    exe_tradeoff = [msatsi_path '/satsi_4D_tradeoff'];
+    exe_bootmech = [msatsi_path '/bootmech_4D'];
+    exe_bootuncert = [msatsi_path '/boot_uncert'];
   end
 else
   error('Platform is not supported.');
@@ -410,7 +412,7 @@ fid4 = fopen(boot_uncertainty,'r');
 
 SUMMARY_TAB = textscan(fid4,'%s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f %s %f %f %f'); 
 
-fid5 = fopen([projectname '\' projectname '.summary'],'w');
+fid5 = fopen([projectname '/' projectname '.summary'],'w');
 fprintf(fid5,'%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n', ...
     'PhiBest','PhiMin','PhiMax','Tr1Best','Tr1Min','Tr1Max','Pl1Best','Pl1Min','Pl1Max', ...
     'Tr2Best','Tr2Min','Tr2Max','Pl2Best','Pl2Min','Pl2Max','Tr3Best','Tr3Min','Tr3Max','Pl3Best','Pl3Min','Pl3Max');
@@ -493,14 +495,14 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
             case false
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE');
                 fclose(fid2);
             case true
                 fprintf(fid,'%d %d %d %d %d\n',TABLE');
                 dim = size(TABLE,1)/2;  
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE(1:dim,:)');
                 fclose(fid2);
         end
@@ -509,7 +511,7 @@ function savesat(filename, mode, comment, TABLE,is_2D,single,varargin)
             case false
                 fprintf(fid,'%d %d %d %d %d %d %d\n',TABLE');
                 folder = filename(1:end-4);
-                fid2 = fopen([folder '\' filename],'w');
+                fid2 = fopen([folder '/' filename],'w');
                 fprintf(fid2,'%d %d %d %d %d\n',TABLE');
                 fclose(fid2);
             case true
@@ -900,7 +902,15 @@ close all;
 %=========================================================================
 function BEST_TENSOR = read_out(projectname,GRIDS,is_2D)
 
-fid = fopen([projectname '\' projectname '.out']);
+archstr = computer('arch');
+if strcmp(archstr,'win32') || strcmp(archstr,'win64')
+    fid = fopen([projectname '/' projectname '.out']);
+elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
+    fid = fopen([projectname '/' projectname '.out']);
+else
+  error('Platform is not supported.');
+end
+
 tline = fgetl(fid);
 if is_2D   % make it only str for fscanf
     BEST_TENSOR = zeros(size(GRIDS,1),8);

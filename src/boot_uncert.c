@@ -1,10 +1,4 @@
 //-------------------------------------------------------------------------------------------------
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-//-------------------------------------------------------------------------------------------------
-
-//-------------------------------------------------------------------------------------------------
 // BOOT_UNCERT
 //
 // Original code:
@@ -21,8 +15,11 @@
 //   directive provides additional output of some parameters for the purpose of MSATSI_PLOT 
 //   routine.
 //
-// $Last revision: 1.0 $  $Date: 2012/07/11  $  
+// $Last revision: 1.1 $  $Date: 2015/03/04  $
 //-------------------------------------------------------------------------------------------------
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 #define pi M_PI
 #define torad (M_PI/180)
@@ -44,7 +41,7 @@ int main(argc, argv)
   float t1, t2, t3, d1, d2, d3; /* trend and plunge of best-fit solution */
   float trad[3], drad[3], trrad, plrad; /* trend and plunge, radians */
   FILE *fpin, *fpout; /* input and output file pointers */
-  char namein[40], nameout[40]; /* input and output file names */
+  char namein[255], nameout[255]; /* input and output file names */
   float best[3][3], bestmag; /* best-fit stress tensor and it's length */
   float stress[3][3], mag; /* stress tensor and it's length */
   float dot[100000], bdot, level; /* tensor dot products */
@@ -57,7 +54,7 @@ int main(argc, argv)
   float angle; /* Dif angle between best sol and bootstrap sol */
 #ifdef GK_EXTENSION
   int xgrid, ygrid, zgrid, tgrid;
-  char nameout2[40];
+  char nameout2[255];
   FILE *fpout2;
 #endif
 
@@ -92,14 +89,14 @@ int main(argc, argv)
   ++argv;
   sscanf(*argv, "%s", namein);
   fpin = fopen(namein, "r");
-  if (fpin == NULL ) {
+  if (fpin == NULL) {
     printf("unable to open %s\n", namein);
     return -9002; /* [PM 11.04.2013]: from -2 to -9002*/
   }
   ++argv;
   sscanf(*argv, "%s", nameout);
   fpout = fopen(nameout, "a");
-  if (fpout == NULL ) {
+  if (fpout == NULL) {
     printf("unable to open %s\n", nameout);
     return -9003; /* [PM 11.04.2013]: from -3 to -9003*/
   }
@@ -120,7 +117,7 @@ int main(argc, argv)
   sscanf(*argv, "%d", &tgrid);
   // END [PM 10.03.2013]
   fpout2 = fopen(nameout2, "a");
-  if (fpout2 == NULL ) {
+  if (fpout2 == NULL) {
     printf("unable to open %s\n", nameout2);
     return -4;
   }
@@ -176,8 +173,8 @@ int main(argc, argv)
 
   /* find the range of phi, trend, and plunge values within the uncertainty */
   fpin = fopen(namein, "r");
-  fgets(line, 100, fpin); 
-  fgets(line, 100, fpin); 
+  fgets(line, 100, fpin);
+  fgets(line, 100, fpin);
   k = 0;
   for (j = 0; j < i; ++j) {
     fgets(line, 100, fpin);
@@ -217,32 +214,28 @@ int main(argc, argv)
           trrad += (2 * pi);
         pl_off = todeg * (plrad - drad[ic]);
         tr_off = todeg * (trrad - trad[ic]);
-        if (pl_off < pl_min[ic])
-          pl_min[ic] = pl_off;
-        if (pl_off > pl_max[ic])
-          pl_max[ic] = pl_off;
-        if (tr_off < tr_min[ic])
-          tr_min[ic] = tr_off;
-        if (tr_off > tr_max[ic])
-          tr_max[ic] = tr_off;
+        if (pl_off < pl_min[ic]) pl_min[ic] = pl_off;
+        if (pl_off > pl_max[ic]) pl_max[ic] = pl_off;
+        if (tr_off < tr_min[ic]) tr_min[ic] = tr_off;
+        if (tr_off > tr_max[ic]) tr_max[ic] = tr_off;
 #ifdef GK_EXTENSION
         if (ic == 0) {
           fprintf(fpout2, "%d %d %d %d %f %f %f ", xgrid, ygrid, zgrid, tgrid,
               phi, tr[ic], pl[ic]);
-        } else if (ic == 1) {
+        }
+        else if (ic == 1) {
           fprintf(fpout2, "%f %f ", tr[ic], pl[ic]);
 
-        } else {
+        }
+        else {
           fprintf(fpout2, "%f %f\n", tr[ic], pl[ic]);
 
         }
 #endif
       }
       k++;
-      if (phi < phimin)
-        phimin = phi;
-      if (phi > phimax)
-        phimax = phi;
+      if (phi < phimin) phimin = phi;
+      if (phi > phimax) phimax = phi;
     }
   }
   for (ic = 0; ic < 3; ic++) {
@@ -267,16 +260,6 @@ int main(argc, argv)
   return 0;
 }
 
-//-------------------------------------------------------------------------------------------------
-void calangle(float v1[3], float v2[3], float *angle) {
-  float dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
-  float v1m = sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
-  float v2m = sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
-  *angle = dot / (v1m * v2m);
-  //return;
-}
-
-//-------------------------------------------------------------------------------------------------
 void tendot(float ten1[3][3], float ten2[3][3], float mag1, float mag2,
     float *pdot) {
   int i, j;
@@ -289,7 +272,6 @@ void tendot(float ten1[3][3], float ten2[3][3], float mag1, float mag2,
   return;
 }
 
-//-------------------------------------------------------------------------------------------------
 void tenmag(float ten[3][3], float *pmag) {
   int i, j;
   double z;
@@ -303,7 +285,6 @@ void tenmag(float ten[3][3], float *pmag) {
   return;
 }
 
-//-------------------------------------------------------------------------------------------------
 void vectorR(float trend, float plunge, float vec[]) {
   vec[0] = cos(plunge * torad) * cos(trend * torad);
   vec[1] = cos(plunge * torad) * sin(trend * torad);
@@ -311,3 +292,10 @@ void vectorR(float trend, float plunge, float vec[]) {
   return;
 }
 
+void calangle(float v1[3], float v2[3], float *angle) {
+  float dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+  float v1m = sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
+  float v2m = sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
+  *angle = dot / (v1m * v2m);
+  //return;
+}
