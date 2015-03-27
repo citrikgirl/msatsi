@@ -4,17 +4,19 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 %   full documentation of msatsi.m routine, see http://induced.pl/msatsi 
 %   or documentation files provided in MSATSI package.
 %
+%   See also: MSATSI_PLOT
 
-%   Copyright 2013-2014 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
+%   Copyright 2013-2015 Patricia Martínez-Garzón <patricia@gfz-potsdam.de>
 %                       Grzegorz Kwiatek <kwiatek@gfz-potsdam.de>
-%   $Revision: 1.0.8 $  $Date: 2015.02.04 $ 
-% 
-% If you use MSATSI in your research, please refer to the following papers:
+%   $Revision: 1.0.9 $  $Date: 2015.03.27 $
 %
-% Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
-% Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
-% Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
-%
+%   If you use MSATSI in your research, please refer to the following papers:
+%   Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
+%   Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+%   Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
+
+%   Development info:
+%     1.0.9 Various corrections to account for path/file handling in Mac/Linux versions.
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
 %           Correction to the best solution of satsi2d.
 %
