@@ -16,9 +16,10 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 %   Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
 
 %   Development info:
-%     1.0.9 Various corrections to account for path/file handling in Mac/Linux versions.
-%     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
-%           Correction to the best solution of satsi2d.
+%     1.0.10 Correction to path handling in Windows systems.
+%     1.0.9  Various corrections to account for path/file handling in Mac/Linux versions.
+%     1.0.8  SilentMode and SaveImage options added. Small corrections to existing code.
+%            Correction to the best solution of satsi2d.
 %
 
 %
@@ -81,15 +82,15 @@ archstr = computer('arch');
 if strcmp(archstr,'win32') || strcmp(archstr,'win64')
   %  win = true;
   if is_2D
-    exe_satsi = [msatsi_path '\satsi2d.exe'];
-    exe_tradeoff = [msatsi_path '\satsi2d_tradeoff.exe'];
-    exe_bootmech = [msatsi_path '\bootmech2d.exe'];
-    exe_bootuncert = [msatsi_path '\bootuncert.exe'];
+    exe_satsi = ['"' msatsi_path '\satsi2d.exe' '"'];
+    exe_tradeoff = ['"' msatsi_path '\satsi2d_tradeoff.exe' '"'];
+    exe_bootmech = ['"' msatsi_path '\bootmech2d.exe' '"'];
+    exe_bootuncert = ['"' msatsi_path '\bootuncert.exe' '"'];
   else
-    exe_satsi = [msatsi_path '\satsi4d.exe'];
-    exe_tradeoff = [msatsi_path '\satsi4d_tradeoff.exe'];
-    exe_bootmech = [msatsi_path '\bootmech4d.exe'];
-    exe_bootuncert = [msatsi_path '\bootuncert.exe'];
+    exe_satsi = ['"' msatsi_path '\satsi4d.exe' '"'];
+    exe_tradeoff = ['"' msatsi_path '\satsi4d_tradeoff.exe' '"'];
+    exe_bootmech = ['"' msatsi_path '\bootmech4d.exe' '"'];
+    exe_bootuncert = ['"' msatsi_path '\bootuncert.exe' '"'];
   end
 elseif strcmp(archstr,'glnx86') || strcmp(archstr,'glnxa64') || strcmp(archstr,'maci64')
   %  win = false;
