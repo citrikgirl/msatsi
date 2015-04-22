@@ -1,5 +1,5 @@
 MSATSI - MATLAB package for stress inversion from focal mechanisms
-Version 1.0.9, Last update: 27.03.2015
+Version 1.0.10, Last update: 22.04.2015
 
 Authors:
 
@@ -19,7 +19,8 @@ http://www.induced.pl/msatsi
  
 Development info:
 
-1.0.9 Various corrections to account for path/file handling in Mac/Linux versions.
-1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
-      Correction to the best solution of satsi2d.
+1.0.10 Correction to path handling in Windows systems.
+1.0.9  Various corrections to account for path/file handling in Mac/Linux versions.
+1.0.8  SilentMode and SaveImage options added. Small corrections to existing code.
+       Correction to the best solution of satsi2d.
 
