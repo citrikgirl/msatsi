@@ -1,4 +1,7 @@
 function [OUT] = msatsi(projectname, TABLE, varargin)
+
+% MSAT input files in input_msatsi_Rvalue
+
 %MSATSI Stress tensor inversion and uncertainty assesment.
 %   Calculate stress tensor orientation using focal mechanisms. For
 %   full documentation of msatsi.m routine, see http://induced.pl/msatsi 
@@ -11,7 +14,8 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 % If you use MSATSI in your research, please refer to the following papers:
 %
 % Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
-% Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+% Hardebeck and M
+%ichael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
 % Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
 %
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
@@ -29,16 +33,16 @@ p.addRequired('TABLE', @(x) isnumeric(x) && (size(x,2) == 5 || size(x,2) == 7));
 p.addParamValue('Damping', 'on', @(x)any(strcmpi(x,{'on','off'})));  
 p.addParamValue('DampingCoeff', 0, @(x) isscalar(x));  
 p.addParamValue('ConfidenceLevel', 95, @(x) isscalar(x) && x > 0 && x < 100);  
-p.addParamValue('FractionValidFaultPlanes', 0.5, @(x) isscalar(x) && x >= 0 && x <= 1);  
+p.addParamValue('FractionValidFaultPlanes', 1, @(x) isscalar(x) && x >= 0 && x <= 1);  
 p.addParamValue('MinEventsNode',20, @(x) isscalar(x) && x > 0);  
-p.addParamValue('BootstrapResamplings', 2000, @(x) isscalar(x) && x > 0);  
+p.addParamValue('BootstrapResamplings', 500, @(x) isscalar(x) && x > 0);  
 p.addParamValue('Caption', '', @(x) ischar(x));  
 p.addParamValue('TimeSpaceDampingRatio', 1, @(x) isnumeric(x));
-p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
+p.addParamValue('PTPlots', 'off', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
-p.addParamValue('N_stab_iterations',6, @(x) isscalar(x) && x > 0);
+p.addParamValue('N_stab_iterations',5, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction',[0.1:0.05:0.9], @(x) isvector(x) && x > 0);
+p.addParamValue('Friction',[0.6], @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -67,7 +71,10 @@ ts_damp_ratio = p.Results.TimeSpaceDampingRatio;
 FRICTION = p.Results.Friction;
 N_iter = p.Results.N_stab_iterations;
 % Define if inversion is 2D or 4D
-if size(TABLE,2) == 5
+% Change this!!
+
+%if size(TABLE,2) == 5
+if size(TABLE,2) == 7    
   is_2D = true;
   n = 0;
 else
@@ -131,7 +138,9 @@ switch is_2D
         error('For 0D inversion please fill X and Y with 0,0');
       end
       new_len = size(TABLE,1);
-      TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:5)];
+      %TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:7)];
+      % DELETE THIS!
+      TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:7)];
       X = TABLE(:,1);
       Y = TABLE(:,2);
       if damping == true || (damping == false && damping_coeff ~= 0)
@@ -147,6 +156,9 @@ switch is_2D
     end
 end
 
+% DELETE THIS!
+n=0;
+
 DIP_DIRECTION1 = TABLE(:,n + 3);
 STRIKE1 = DIP_DIRECTION1 - 90;
 STRIKE1(STRIKE1<0) = STRIKE1(STRIKE1<0) + 360;
@@ -155,6 +167,11 @@ DIP_ANGLE1 = TABLE(:,n + 4);
 RAKE1 = TABLE(:,n + 5);
 comment = 'default';
     
+% DELETE THIS PART!!!
+ID = TABLE(:,n + 6);
+DT = TABLE(:,n + 7);
+% END DELETING
+
 % Save input SATSI (.sat) file.
 if ~exist(projectname,'dir')
   if ~exist(projectname,'file')
@@ -272,6 +289,8 @@ end
 
 % Record the new initial TABLE with real fault planes
 TABLE = round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE]);
+% DELETE THIS PART!!
+TABLE = [round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE ID DT])];
 
 sat_input_file = [projectname '.sat'];
 savesat2(projectname,sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
