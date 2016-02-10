@@ -366,8 +366,10 @@ if strcmpi(type, 'stereonet')
       [XX_BEST, YY_BEST] = project(AZM_BEST, TKO_BEST);
       
       %---- Plot stereonet with trace of stress directions
-      Hs = newsfigure(Hs);
-      plot_stereonet(0, 0, view_stereonet, view_grid)
+      %Hs = newsfigure(Hs);
+      % PUT THIS IN ORDER AGAIN!
+      Hs = gcf;
+      % plot_stereonet(0, 0, view_stereonet, view_grid) UNCOMMENT THIS
       hold on;
       makepatch(type,TR_MIN,TR_MAX,PL_MIN,PL_MAX,X0,Y0,PATCHCOLORS, ...
         AxesEnabled,confidence_intervals)

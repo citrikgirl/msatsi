@@ -13,36 +13,39 @@ function [OUT] = msatsi(projectname, TABLE, varargin)
 % 
 % If you use MSATSI in your research, please refer to the following papers:
 %
+% Vavry?uk, V. (2014). Iterative joint inversion for stress and fault orientations 
+% from focal mechanisms, Geophys. J. Int. 199, no. 1, 69–77, doi 10.1093/gji/ggu224.
+%
 % Martínez-Garzón et al. (2014). Seismol. Res. Lett., 85, 4, doi: 10.1785/0220130189
-% Hardebeck and M
-%ichael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
+% 
+% Hardebeck and Michael (2006). J. Geophys. Res. Solid Earth 111, B11310, doi 10.1029/2005JB004144.
 % Lund and Townend,(2007). Geophys. J. Int., 170, 1328-1335, doi: 10.1111/j.1365-246X.2007.03468.x.
 %
 %     1.0.8 SilentMode and SaveImage options added. Small corrections to existing code.
 %           Correction to the best solution of satsi2d.
 %
 
-% New version of MSATSI corrected by the best solution and 
+% New UNOFFICIAL AND UNFINISHED version of MSATSI corrected by the best solution and 
 % adding the criterion instability from Vaclav Vavrycuk.
 %-------------------------------------------------------------------------
 
 % Interpretation of input parameters.
 p = inputParser;
 p.addRequired('projectname', @(x) ischar(x) && length(x) < 20);
-p.addRequired('TABLE', @(x) isnumeric(x) && (size(x,2) == 5 || size(x,2) == 7)); 
+p.addRequired('TABLE', @(x) isnumeric(x) && (size(x,2) == 5 || size(x,2) == 13)); 
 p.addParamValue('Damping', 'on', @(x)any(strcmpi(x,{'on','off'})));  
-p.addParamValue('DampingCoeff', 0, @(x) isscalar(x));  
+p.addParamValue('DampingCoeff', 1, @(x) isscalar(x));  
 p.addParamValue('ConfidenceLevel', 95, @(x) isscalar(x) && x > 0 && x < 100);  
-p.addParamValue('FractionValidFaultPlanes', 1, @(x) isscalar(x) && x >= 0 && x <= 1);  
-p.addParamValue('MinEventsNode',20, @(x) isscalar(x) && x > 0);  
+p.addParamValue('FractionValidFaultPlanes',1, @(x) isscalar(x) && x >= 0 && x <= 1);  
+p.addParamValue('MinEventsNode',14, @(x) isscalar(x) && x > 0);  
 p.addParamValue('BootstrapResamplings', 500, @(x) isscalar(x) && x > 0);  
 p.addParamValue('Caption', '', @(x) ischar(x));  
 p.addParamValue('TimeSpaceDampingRatio', 1, @(x) isnumeric(x));
-p.addParamValue('PTPlots', 'off', @(x)any(strcmpi(x,{'on','off'})));
+p.addParamValue('PTPlots', 'on', @(x)any(strcmpi(x,{'on','off'})));
 % New input parameters:
 p.addParamValue('N_stab_iterations',5, @(x) isscalar(x) && x > 0);
 p.addParamValue('N_ini_realizations',10, @(x) isscalar(x) && x > 0);
-p.addParamValue('Friction',[0.6], @(x) isvector(x) && x > 0);
+p.addParamValue('Friction',[0.5], @(x) isvector(x) && x > 0);
 
 % Parse input parameters.
 p.parse(projectname,TABLE,varargin{:});
@@ -72,9 +75,8 @@ FRICTION = p.Results.Friction;
 N_iter = p.Results.N_stab_iterations;
 % Define if inversion is 2D or 4D
 % Change this!!
-
 %if size(TABLE,2) == 5
-if size(TABLE,2) == 7    
+if size(TABLE,2) == 13    
   is_2D = true;
   n = 0;
 else
@@ -140,7 +142,7 @@ switch is_2D
       new_len = size(TABLE,1);
       %TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:7)];
       % DELETE THIS!
-      TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:7)];
+      TABLE(end+1:new_len*2,:) = [GRIDS(1,1)*ones(new_len,1) (GRIDS(1,2)+1)*ones(new_len,1) TABLE(:,3:13)];
       X = TABLE(:,1);
       Y = TABLE(:,2);
       if damping == true || (damping == false && damping_coeff ~= 0)
@@ -169,7 +171,10 @@ comment = 'default';
     
 % DELETE THIS PART!!!
 ID = TABLE(:,n + 6);
-DT = TABLE(:,n + 7);
+QUALITY = TABLE(:,n + 7); FP_ERROR = TABLE(:,n + 8);
+FP_AUX = TABLE(:,n + 9); WSMF = TABLE(:,n + 10);
+PROB = TABLE(:,n + 11);  STA_DIST = TABLE(:,n + 12);
+NPHA = TABLE(:,n + 13);
 % END DELETING
 
 % Save input SATSI (.sat) file.
@@ -202,7 +207,7 @@ caption = [p.Results.Caption ' (' projectname ') '];
 
 % ===========Addition of Vaclav Routine STARTS HERE =====================
 
-%---Perform initial stress inversion using random fault planes---
+%---Perform initial stress inversion using random fault planes and no damping ---
 % To be implemented: N° of realizations
 sat_input_file_0 = [projectname '_0.sat']; % Satsi input
 savesat2(projectname,sat_input_file_0, 'w', comment,[X Y ap DIP_DIRECTION1 DIP_ANGLE1 RAKE1],is_2D,single);
@@ -229,7 +234,7 @@ for i_fric = 1: length(FRICTION)
     STRIKE1 = STR_INI; DIP_ANGLE1 = DIP_ANGLE_INI; RAKE1 = RAKE_INI;
     %---------- Loop over different iterations ----------
     for i_iter = 1:N_iter
-        [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR_0,fric,X,Y,...
+        [STRIKE,DIP_ANGLE,RAKE,INST,INST_AUX] = stability(BEST_TENSOR_0,fric,X,Y,...
             STRIKE1,DIP_ANGLE1,RAKE1);
         DIP_DIRECTION = STRIKE + 90;
         DIP_DIRECTION(DIP_DIRECTION >= 360) = DIP_DIRECTION(DIP_DIRECTION >= 360) - 360;
@@ -290,7 +295,7 @@ end
 % Record the new initial TABLE with real fault planes
 TABLE = round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE]);
 % DELETE THIS PART!!
-TABLE = [round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE ID DT])];
+TABLE = [round([X Y ap DIP_DIRECTION DIP_ANGLE RAKE ID QUALITY FP_ERROR FP_AUX WSMF PROB STA_DIST NPHA]) INST];
 
 sat_input_file = [projectname '.sat'];
 savesat2(projectname,sat_input_file, 'w', comment,[X Y ap DIP_DIRECTION DIP_ANGLE RAKE],is_2D,single);
@@ -1145,7 +1150,7 @@ end
 % Perform instability criteria to choose best nodal planes
 % (Routine adapted from the original routine from V. Varycuk)
 %------------------------------------------------------------------------
-function [STRIKE,DIP_ANGLE,RAKE,INST] = stability(BEST_TENSOR,fric,X,Y,...
+function [STRIKE,DIP_ANGLE,RAKE,INST,INST_AUX] = stability(BEST_TENSOR,fric,X,Y,...
             STRIKE1,DIP_ANGLE1,RAKE1)
 
 % Calculate auxiliar fault planes
@@ -1160,7 +1165,7 @@ STRIKE2(STRIKE2>=360) = STRIKE2(STRIKE2>=360) - 360;
 STRIKE = zeros(size(STRIKE1));
 DIP_ANGLE = zeros(size(STRIKE1));
 RAKE = zeros(size(STRIKE1));
-INST = nan(size(STRIKE1));
+INST = nan(size(STRIKE1)); INST_AUX = nan(size(STRIKE1));
 
 TAU = [BEST_TENSOR(:,3) BEST_TENSOR(:,4) BEST_TENSOR(:,5)...
     BEST_TENSOR(:,4) BEST_TENSOR(:,6) BEST_TENSOR(:,7) ...
@@ -1240,8 +1245,9 @@ for i = 1: size(BEST_TENSOR,1) % Loop over each separate stress state:
     instability_n2 = (tau_shear_n2_norm - FRIC_T.*(tau_normal_n2_norm-1))./(FRIC_T + sqrt(1 + FRIC_T.^2));
     
     [instability i_index] = max([instability_n1'; instability_n2']);
+    [instability_aux] = min([instability_n1'; instability_n2']);
     
-    INST(I) = instability';
+    INST(I) = instability';  INST_AUX(I) = instability_aux';
     %--------------------------------------------------------------------------
     % identification of the fault according to the instability criterion
     %--------------------------------------------------------------------------
